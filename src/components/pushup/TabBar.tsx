@@ -6,7 +6,7 @@ const ITEMS = [
   { label: "Progress", icon: Activity, to: "/today" as const },
   { label: "Squad", icon: Users, to: "/squad" as const },
   { label: "Trophies", icon: Trophy, to: "/trophies" as const },
-  { label: "Wellbeing", icon: HeartPulse, to: null },
+  { label: "Wellbeing", icon: HeartPulse, to: "/wellbeing" as const },
   { label: "Me", icon: User, to: null },
 ];
 
