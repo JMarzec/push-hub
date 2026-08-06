@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedSquadRouteImport } from './routes/_authenticated/squad'
 import { Route as AuthenticatedTodayRouteImport } from './routes/_authenticated/today'
 import { Route as JoinInviteCodeRouteImport } from './routes/join.$inviteCode'
 
@@ -29,6 +30,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSquadRoute = AuthenticatedSquadRouteImport.update({
+  id: '/squad',
+  path: '/squad',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedTodayRoute = AuthenticatedTodayRouteImport.update({
   id: '/today',
   path: '/today',
@@ -43,12 +49,14 @@ const JoinInviteCodeRoute = JoinInviteCodeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/squad': typeof AuthenticatedSquadRoute
   '/today': typeof AuthenticatedTodayRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/squad': typeof AuthenticatedSquadRoute
   '/today': typeof AuthenticatedTodayRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
 }
@@ -57,19 +65,21 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/squad': typeof AuthenticatedSquadRoute
   '/_authenticated/today': typeof AuthenticatedTodayRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/today' | '/join/$inviteCode'
+  fullPaths: '/' | '/auth' | '/squad' | '/today' | '/join/$inviteCode'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/today' | '/join/$inviteCode'
+  to: '/' | '/auth' | '/squad' | '/today' | '/join/$inviteCode'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/squad'
     | '/_authenticated/today'
     | '/join/$inviteCode'
   fileRoutesById: FileRoutesById
@@ -104,6 +114,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/squad': {
+      id: '/_authenticated/squad'
+      path: '/squad'
+      fullPath: '/squad'
+      preLoaderRoute: typeof AuthenticatedSquadRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/today': {
       id: '/_authenticated/today'
       path: '/today'
@@ -122,10 +139,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedSquadRoute: typeof AuthenticatedSquadRoute
   AuthenticatedTodayRoute: typeof AuthenticatedTodayRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedSquadRoute: AuthenticatedSquadRoute,
   AuthenticatedTodayRoute: AuthenticatedTodayRoute,
 }
 
