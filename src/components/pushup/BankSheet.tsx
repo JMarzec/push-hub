@@ -37,7 +37,7 @@ export function BankSheet({
 
   function switchMode(next: "deposit" | "withdraw") {
     setMode(next);
-    setAmount(0);
+    setAmount(next === "deposit" ? surplus : Math.min(bank, remainingToday));
   }
 
   function submit() {
@@ -53,11 +53,14 @@ export function BankSheet({
       open={open}
       onOpenChange={(next) => {
         if (next) {
-          setMode(surplus > 0 ? "deposit" : "withdraw");
-          setAmount(0);
+          const startMode = surplus > 0 ? "deposit" : "withdraw";
+          setMode(startMode);
+          // Pre-fill with everything available so one tap banks the whole surplus.
+          setAmount(startMode === "deposit" ? surplus : Math.min(bank, remainingToday));
         }
         onOpenChange(next);
       }}
+
     >
       <SheetContent side="bottom" className="rounded-t-3xl border-border">
         <SheetHeader className="text-left">
