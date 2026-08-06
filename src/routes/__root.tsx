@@ -80,11 +80,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Push Daily — Daily push-up targets with friends" },
+      {
+        name: "description",
+        content:
+          "Set your own daily push-up target and frequency, log reps and take on the challenge with friends.",
+      },
+      { name: "author", content: "Push Daily" },
+      { property: "og:title", content: "Push Daily — Daily push-up targets with friends" },
+      {
+        property: "og:description",
+        content:
+          "Set your own daily push-up target and frequency, log reps and take on the challenge with friends.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
