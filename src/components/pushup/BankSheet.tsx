@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PiggyBank } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,9 +35,18 @@ export function BankSheet({
   const [amount, setAmount] = useState(0);
   const value = Math.min(amount, max);
 
+  // Pre-fill with everything available each time the sheet opens, so one tap
+  // banks the whole surplus (the parent controls `open`, not a Radix trigger).
+  useEffect(() => {
+    if (!open) return;
+    const startMode = surplus > 0 ? "deposit" : "withdraw";
+    setMode(startMode);
+    setAmount(startMode === "deposit" ? surplus : Math.min(bank, remainingToday));
+  }, [open, surplus, bank, remainingToday]);
+
   function switchMode(next: "deposit" | "withdraw") {
     setMode(next);
-    setAmount(0);
+    setAmount(next === "deposit" ? surplus : Math.min(bank, remainingToday));
   }
 
   function submit() {
@@ -49,15 +58,9 @@ export function BankSheet({
   }
 
   return (
-    <Sheet
-      open={open}
-      onOpenChange={(next) => {
-        if (next) {
-          setMode(surplus > 0 ? "deposit" : "withdraw");
-          setAmount(0);
-        }
-        onOpenChange(next);
-      }}
+    <Sheet open={open} onOpenChange={onOpenChange}
+
+
     >
       <SheetContent side="bottom" className="rounded-t-3xl border-border">
         <SheetHeader className="text-left">

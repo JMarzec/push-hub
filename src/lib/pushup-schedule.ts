@@ -77,5 +77,16 @@ export function composeSets(
     sets[last] = { ...sets[last]!, reps: sets[last]!.reps + toAdd };
   }
 
+  // Overshooting one set counts towards the next ones, so a chip never reads 25/13.
+  let spill = 0;
+  for (let i = 0; i < sets.length; i += 1) {
+    const total = sets[i]!.reps + spill;
+    const isLast = i === sets.length - 1;
+    const keep = isLast ? total : Math.min(total, sets[i]!.target);
+    spill = total - keep;
+    sets[i] = { ...sets[i]!, reps: keep };
+  }
+
   return sets;
+
 }

@@ -35,15 +35,22 @@ function JoinPage() {
   const navigate = useNavigate();
   const joining = useRef(false);
   const [teamName, setTeamName] = useState<string | null>(null);
+  const [status, setStatus] = useState<"loading" | "found" | "invalid">("loading");
 
   // Show who invited them before sign-in.
   useEffect(() => {
     let cancelled = false;
     void supabase
       .rpc("team_preview_by_code", { _code: inviteCode })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (cancelled) return;
         const row = Array.isArray(data) ? data[0] : null;
-        if (!cancelled && row) setTeamName(row.team_name);
+        if (error || !row) {
+          setStatus("invalid");
+          return;
+        }
+        setTeamName(row.team_name);
+        setStatus("found");
       });
     return () => {
       cancelled = true;
@@ -52,7 +59,7 @@ function JoinPage() {
 
   // Once signed in, accept the invite, then land on the squad screen.
   useEffect(() => {
-    if (!session || joining.current) return;
+    if (!session || joining.current || status !== "found") return;
     joining.current = true;
     void (async () => {
       try {
@@ -64,7 +71,38 @@ function JoinPage() {
         void navigate({ to: "/today", replace: true });
       }
     })();
-  }, [session, inviteCode, navigate]);
+  }, [session, inviteCode, navigate, status]);
+
+  if (status === "invalid") {
+    return (
+      <main className="flex min-h-screen flex-col justify-center bg-foreground px-5 py-12 text-card">
+        <div className="mx-auto w-full max-w-sm text-center">
+          <span className="inline-flex size-14 items-center justify-center rounded-2xl bg-card/10">
+            <Users className="size-7 text-card/70" aria-hidden="true" />
+          </span>
+          <h1 className="mt-6 text-3xl font-bold leading-tight">That invite isn't valid</h1>
+          <p className="mt-3 text-sm leading-relaxed text-card/70">
+            The code <span className="font-mono font-semibold text-card">{inviteCode}</span> doesn't
+            match a team. Ask your friend to resend the link, or start your own challenge.
+          </p>
+          <div className="mt-7 space-y-2">
+            <Button asChild className="h-13 w-full rounded-full py-4 text-base font-bold">
+              <Link to={session ? "/squad" : "/auth"}>
+                {session ? "Go to my squad" : "Create your account"}
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="ghost"
+              className="h-12 w-full rounded-full text-base font-semibold text-card hover:bg-card/10 hover:text-card"
+            >
+              <Link to={session ? "/today" : "/"}>{session ? "Back to today" : "Back home"}</Link>
+            </Button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex min-h-screen flex-col justify-center bg-foreground px-5 py-12 text-card">
@@ -80,6 +118,7 @@ function JoinPage() {
           <span className="font-mono font-semibold text-card">{inviteCode}</span>. Create a free
           account or sign in to join — only registered members can log push-ups.
         </p>
+
 
         <div className="mt-7 space-y-2">
           <Button asChild className="h-13 w-full rounded-full py-4 text-base font-bold">
