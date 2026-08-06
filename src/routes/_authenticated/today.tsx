@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Flame, Info, LogOut, PiggyBank, Plus, Share2, Sliders } from "lucide-react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   queryOptions,
   useMutation,
@@ -21,6 +21,7 @@ import { SetChips } from "@/components/pushup/SetChips";
 import { TabBar } from "@/components/pushup/TabBar";
 import { TargetSheet } from "@/components/pushup/TargetSheet";
 import { composeSets } from "@/lib/pushup-schedule";
+import { factForDate } from "@/lib/wellbeing";
 import { createTeam, getMyTeam, renameTeam } from "@/lib/teams.functions";
 import {
   deleteLog,
@@ -145,6 +146,7 @@ function Today() {
   );
 
   const total = sets.reduce((sum, s) => sum + s.reps, 0);
+  const todaysFact = factForDate(data.settings.startDate, today);
   const nextSet = sets.find((s) => s.reps < s.target) ?? sets[sets.length - 1]!;
   const surplus = Math.max(total - dailyTarget, 0);
   const remainingToday = Math.max(dailyTarget - total, 0);
@@ -328,9 +330,16 @@ function Today() {
             Today's wellbeing fact
           </h2>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Regular moderate exercise is linked with better sleep quality — and better sleep is one
-            of the strongest supports for day-to-day mental wellbeing.
+            {todaysFact.body}
           </p>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="mt-2 -ml-2 font-semibold text-primary"
+          >
+            <Link to="/wellbeing">See all wellbeing facts</Link>
+          </Button>
         </section>
 
         <p className="mt-5 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">

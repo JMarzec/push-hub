@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedSquadRouteImport } from './routes/_authenticated/squad'
 import { Route as AuthenticatedTodayRouteImport } from './routes/_authenticated/today'
 import { Route as AuthenticatedTrophiesRouteImport } from './routes/_authenticated/trophies'
+import { Route as AuthenticatedWellbeingRouteImport } from './routes/_authenticated/wellbeing'
 import { Route as JoinInviteCodeRouteImport } from './routes/join.$inviteCode'
 
 const IndexRoute = IndexRouteImport.update({
@@ -46,6 +47,11 @@ const AuthenticatedTrophiesRoute = AuthenticatedTrophiesRouteImport.update({
   path: '/trophies',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWellbeingRoute = AuthenticatedWellbeingRouteImport.update({
+  id: '/wellbeing',
+  path: '/wellbeing',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const JoinInviteCodeRoute = JoinInviteCodeRouteImport.update({
   id: '/join/$inviteCode',
   path: '/join/$inviteCode',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/squad': typeof AuthenticatedSquadRoute
   '/today': typeof AuthenticatedTodayRoute
   '/trophies': typeof AuthenticatedTrophiesRoute
+  '/wellbeing': typeof AuthenticatedWellbeingRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
 }
 export interface FileRoutesByTo {
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/squad': typeof AuthenticatedSquadRoute
   '/today': typeof AuthenticatedTodayRoute
   '/trophies': typeof AuthenticatedTrophiesRoute
+  '/wellbeing': typeof AuthenticatedWellbeingRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
 }
 export interface FileRoutesById {
@@ -76,14 +84,28 @@ export interface FileRoutesById {
   '/_authenticated/squad': typeof AuthenticatedSquadRoute
   '/_authenticated/today': typeof AuthenticatedTodayRoute
   '/_authenticated/trophies': typeof AuthenticatedTrophiesRoute
+  '/_authenticated/wellbeing': typeof AuthenticatedWellbeingRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/squad' | '/today' | '/trophies' | '/join/$inviteCode'
+    | '/'
+    | '/auth'
+    | '/squad'
+    | '/today'
+    | '/trophies'
+    | '/wellbeing'
+    | '/join/$inviteCode'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/squad' | '/today' | '/trophies' | '/join/$inviteCode'
+  to:
+    | '/'
+    | '/auth'
+    | '/squad'
+    | '/today'
+    | '/trophies'
+    | '/wellbeing'
+    | '/join/$inviteCode'
   id:
     | '__root__'
     | '/'
@@ -92,6 +114,7 @@ export interface FileRouteTypes {
     | '/_authenticated/squad'
     | '/_authenticated/today'
     | '/_authenticated/trophies'
+    | '/_authenticated/wellbeing'
     | '/join/$inviteCode'
   fileRoutesById: FileRoutesById
 }
@@ -146,6 +169,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTrophiesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/wellbeing': {
+      id: '/_authenticated/wellbeing'
+      path: '/wellbeing'
+      fullPath: '/wellbeing'
+      preLoaderRoute: typeof AuthenticatedWellbeingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/join/$inviteCode': {
       id: '/join/$inviteCode'
       path: '/join/$inviteCode'
@@ -160,12 +190,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSquadRoute: typeof AuthenticatedSquadRoute
   AuthenticatedTodayRoute: typeof AuthenticatedTodayRoute
   AuthenticatedTrophiesRoute: typeof AuthenticatedTrophiesRoute
+  AuthenticatedWellbeingRoute: typeof AuthenticatedWellbeingRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSquadRoute: AuthenticatedSquadRoute,
   AuthenticatedTodayRoute: AuthenticatedTodayRoute,
   AuthenticatedTrophiesRoute: AuthenticatedTrophiesRoute,
+  AuthenticatedWellbeingRoute: AuthenticatedWellbeingRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
