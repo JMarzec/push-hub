@@ -143,6 +143,7 @@ export type Database = {
       team_members: {
         Row: {
           created_at: string
+          follow_shared_target: boolean
           id: string
           role: string
           team_id: string
@@ -151,6 +152,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          follow_shared_target?: boolean
           id?: string
           role?: string
           team_id: string
@@ -159,6 +161,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          follow_shared_target?: boolean
           id?: string
           role?: string
           team_id?: string
@@ -182,6 +185,8 @@ export type Database = {
           invite_code: string
           name: string
           owner_id: string
+          shared_frequency: number | null
+          shared_target: number | null
           updated_at: string
         }
         Insert: {
@@ -190,6 +195,8 @@ export type Database = {
           invite_code: string
           name?: string
           owner_id: string
+          shared_frequency?: number | null
+          shared_target?: number | null
           updated_at?: string
         }
         Update: {
@@ -198,6 +205,8 @@ export type Database = {
           invite_code?: string
           name?: string
           owner_id?: string
+          shared_frequency?: number | null
+          shared_target?: number | null
           updated_at?: string
         }
         Relationships: []
