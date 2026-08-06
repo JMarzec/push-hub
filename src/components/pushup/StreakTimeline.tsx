@@ -69,7 +69,9 @@ export function StreakTimeline({
   restAllowance,
   restWindowDays,
   onGrace,
+  onSelectDay,
 }: Props) {
+
   const [showBreakdown, setShowBreakdown] = useState(false);
   const relevant = timeline.filter((d) => d.status !== "none");
   const counted = relevant.filter((d) => d.status === "hit");
