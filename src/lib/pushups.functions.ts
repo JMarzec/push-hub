@@ -214,15 +214,39 @@ export const moveBank = createServerFn({ method: "POST" })
       throw new Error(`Only ${balance} banked push-ups available.`);
     }
 
-    const { error } = await supabase.from("bank_entries").insert({
-      user_id: userId,
-      reps: data.reps,
-      kind: data.kind,
-      entry_date: data.today,
-    });
+    const { data: inserted, error } = await supabase
+      .from("bank_entries")
+      .insert({
+        user_id: userId,
+        reps: data.reps,
+        kind: data.kind,
+        entry_date: data.today,
+      })
+      .select("id")
+      .single();
     if (error) throw new Error(error.message);
-    return { balance: data.kind === "deposit" ? balance + data.reps : balance - data.reps };
+    return {
+      entryId: inserted.id,
+      balance: data.kind === "deposit" ? balance + data.reps : balance - data.reps,
+    };
   });
+
+// Reverts a single bank transfer (deposit or withdrawal) by deleting the entry
+// it created, so an accidental transfer can be undone from the toast.
+export const undoBankEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ entryId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("bank_entries")
+      .delete()
+      .eq("id", data.entryId)
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 export const getStats = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
