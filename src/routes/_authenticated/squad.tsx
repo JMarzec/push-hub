@@ -9,7 +9,16 @@ import { Input } from "@/components/ui/input";
 import { ProgressRing } from "@/components/pushup/ProgressRing";
 import { TabBar } from "@/components/pushup/TabBar";
 import { InviteSheet } from "@/components/pushup/InviteSheet";
-import { createTeam, getMyTeam, joinTeam, leaveTeam, renameTeam } from "@/lib/teams.functions";
+import { SharedTargetCard } from "@/components/pushup/SharedTargetCard";
+import {
+  createTeam,
+  getMyTeam,
+  joinTeam,
+  leaveTeam,
+  renameTeam,
+  setFollowSharedTarget,
+  setSharedTarget,
+} from "@/lib/teams.functions";
 
 export const teamQueryOptions = queryOptions({
   queryKey: ["team"],
@@ -66,13 +75,26 @@ function Squad() {
   const [code, setCode] = useState("");
   const [board, setBoard] = useState<Board>("today");
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["team"] });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["team"] });
+    void queryClient.invalidateQueries({ queryKey: ["today"] });
+  };
   const onError = (error: Error) => toast.error(error.message);
 
   const createMutation = useMutation({ mutationFn: useServerFn(createTeam), onSuccess: invalidate, onError });
   const joinMutation = useMutation({ mutationFn: useServerFn(joinTeam), onSuccess: invalidate, onError });
   const renameMutation = useMutation({ mutationFn: useServerFn(renameTeam), onSuccess: invalidate, onError });
   const leaveMutation = useMutation({ mutationFn: useServerFn(leaveTeam), onSuccess: invalidate, onError });
+  const sharedMutation = useMutation({
+    mutationFn: useServerFn(setSharedTarget),
+    onSuccess: invalidate,
+    onError,
+  });
+  const followMutation = useMutation({
+    mutationFn: useServerFn(setFollowSharedTarget),
+    onSuccess: invalidate,
+    onError,
+  });
 
   const team = data.team;
   const members = data.members;
@@ -195,6 +217,35 @@ function Squad() {
             {teamToday} of {teamTarget} combined push-ups
           </p>
         </section>
+
+        <SharedTargetCard
+          teamName={team.name}
+          isOwner={team.isOwner}
+          sharedTarget={team.sharedTarget}
+          sharedFrequency={team.sharedFrequency}
+          followsShared={data.membership?.followsShared ?? false}
+          followerCount={members.filter((m) => m.followsShared).length}
+          memberCount={members.length}
+          busy={sharedMutation.isPending || followMutation.isPending}
+          onSaveShared={async (sharedTargetValue, sharedFrequencyValue) => {
+            await sharedMutation.mutateAsync({
+              data: {
+                teamId: team.id,
+                sharedTarget: sharedTargetValue,
+                sharedFrequency: sharedFrequencyValue,
+              },
+            });
+            toast.success(
+              sharedTargetValue ? "Squad target updated." : "Squad target removed.",
+            );
+          }}
+          onToggleFollow={async (follow) => {
+            await followMutation.mutateAsync({ data: { teamId: team.id, follow } });
+            toast.success(
+              follow ? "You're following the squad target." : "Back to your personal target.",
+            );
+          }}
+        />
 
         <section aria-labelledby="roster-heading">
           <div className="mb-2 flex items-center justify-between">
