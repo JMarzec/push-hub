@@ -22,6 +22,11 @@ export interface TeamMemberStat {
   repsTotal: number;
 }
 
+async function loadTeamStats(teamId: string): Promise<TeamMemberStat[]> {
+  const { fetchTeamStats } = await import("./teams.server");
+  return fetchTeamStats(teamId);
+}
+
 export const getMyTeam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -44,20 +49,9 @@ export const getMyTeam = createServerFn({ method: "POST" })
       owner_id: string;
     };
 
-    const { data: stats, error: statsError } = await supabase.rpc("team_today_stats", {
-      _team_id: team.id,
-    });
-    if (statsError) throw new Error(statsError.message);
-
-    const members: TeamMemberStat[] = (stats ?? []).map((row) => ({
-      userId: row.user_id,
-      displayName: row.display_name,
-      role: row.role,
-      repsToday: row.reps_today,
-      dailyTarget: row.daily_target,
-      repsWeek: row.reps_week,
-      repsTotal: row.reps_total,
-    }));
+    // Roster + teammate stats need to read other members' rows, so they run
+    // through trusted server code after membership above is confirmed.
+    const members = await loadTeamStats(team.id);
 
     return {
       team: {
@@ -96,15 +90,27 @@ export const createTeam = createServerFn({ method: "POST" })
     throw new Error("Could not generate an invite code, please try again.");
   });
 
+export const previewTeamByCode = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ code: z.string().trim().min(4).max(12) }).parse(input))
+  .handler(async ({ data }) => {
+    const { lookupTeamByCode } = await import("./teams.server");
+    const team = await lookupTeamByCode(data.code);
+    // Invite links are public, so only the team name and size are exposed.
+    return team ? { name: team.name, memberCount: team.memberCount } : null;
+  });
+
 export const joinTeam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ code: z.string().trim().min(4).max(12) }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: teamId, error } = await context.supabase.rpc("join_team_by_code", {
-      _code: data.code,
-    });
-    if (error) throw new Error(error.message);
-    return { teamId: teamId as string };
+    const { lookupTeamByCode, addTeamMember } = await import("./teams.server");
+    const team = await lookupTeamByCode(data.code);
+    if (!team) throw new Error("That invite code is not valid");
+    if (team.memberCount >= 50 && !team.memberIds.includes(context.userId)) {
+      throw new Error("This team is full");
+    }
+    await addTeamMember(team.id, context.userId);
+    return { teamId: team.id };
   });
 
 export const renameTeam = createServerFn({ method: "POST" })
