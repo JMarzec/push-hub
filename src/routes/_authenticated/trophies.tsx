@@ -100,7 +100,25 @@ function Trophies() {
               </div>
             ))}
           </dl>
+          <div className="mt-3 rounded-2xl border border-border bg-secondary/60 px-3 py-3">
+            <p className="text-xs font-bold text-foreground">
+              {data.currentStreak > 0
+                ? data.onGrace
+                  ? `${data.currentStreak}-day streak alive on a rest day`
+                  : `${data.currentStreak}-day streak running`
+                : "No active streak — hit today's target to start one"}
+            </p>
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+              A day counts once you hit your target. {data.restAllowance} rest day per{" "}
+              {data.restWindowDays} days is forgiven and keeps the streak alive; two missed days in a
+              row end it. Today never breaks it.
+            </p>
+            <p className="mt-1 text-[11px] font-semibold text-muted-foreground tabular-nums">
+              Rest days left in this window: {data.restDaysLeft} of {data.restAllowance}
+            </p>
+          </div>
         </section>
+
 
         <section className="mt-5" aria-labelledby="recent-heading">
           <h2 id="recent-heading" className="mb-2 text-sm font-bold text-foreground">
