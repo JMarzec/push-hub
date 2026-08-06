@@ -35,6 +35,15 @@ export function BankSheet({
   const [amount, setAmount] = useState(0);
   const value = Math.min(amount, max);
 
+  // Pre-fill with everything available each time the sheet opens, so one tap
+  // banks the whole surplus (the parent controls `open`, not a Radix trigger).
+  useEffect(() => {
+    if (!open) return;
+    const startMode = surplus > 0 ? "deposit" : "withdraw";
+    setMode(startMode);
+    setAmount(startMode === "deposit" ? surplus : Math.min(bank, remainingToday));
+  }, [open, surplus, bank, remainingToday]);
+
   function switchMode(next: "deposit" | "withdraw") {
     setMode(next);
     setAmount(next === "deposit" ? surplus : Math.min(bank, remainingToday));
@@ -49,17 +58,8 @@ export function BankSheet({
   }
 
   return (
-    <Sheet
-      open={open}
-      onOpenChange={(next) => {
-        if (next) {
-          const startMode = surplus > 0 ? "deposit" : "withdraw";
-          setMode(startMode);
-          // Pre-fill with everything available so one tap banks the whole surplus.
-          setAmount(startMode === "deposit" ? surplus : Math.min(bank, remainingToday));
-        }
-        onOpenChange(next);
-      }}
+    <Sheet open={open} onOpenChange={onOpenChange}
+
 
     >
       <SheetContent side="bottom" className="rounded-t-3xl border-border">
