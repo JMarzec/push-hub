@@ -304,7 +304,7 @@ function Me() {
             <>
               <p className="mt-1 text-sm font-semibold text-primary">
                 Coming from your squad target
-                {todayData.settings.squadName ? ` (${todayData.settings.squadName})` : ""}.
+                {settingsQuery.data.settings.squadName ? ` (${settingsQuery.data.settings.squadName})` : ""}.
               </p>
               <Button
                 variant="outline"
