@@ -21,6 +21,7 @@ export interface TeamMemberStat {
   repsWeek: number;
   repsTotal: number;
   avatarUrl: string | null;
+  followsShared: boolean;
 }
 
 export const getMyTeam = createServerFn({ method: "POST" })
@@ -30,7 +31,9 @@ export const getMyTeam = createServerFn({ method: "POST" })
 
     const { data: membership, error: memberError } = await supabase
       .from("team_members")
-      .select("team_id, role, teams(id, name, invite_code, owner_id)")
+      .select(
+        "team_id, role, follow_shared_target, teams(id, name, invite_code, owner_id, shared_target, shared_frequency)",
+      )
       .eq("user_id", userId)
       .order("created_at", { ascending: true })
       .limit(1)
@@ -43,12 +46,14 @@ export const getMyTeam = createServerFn({ method: "POST" })
       name: string;
       invite_code: string;
       owner_id: string;
+      shared_target: number | null;
+      shared_frequency: number | null;
     };
 
     // Roster + teammate stats need to read other members' rows, so they run
     // through trusted server code after membership above is confirmed.
     const { fetchTeamStats } = await import("./teams.server");
-    const members = await fetchTeamStats(team.id);
+    const members = await fetchTeamStats(team.id, team.shared_target);
 
     return {
       team: {
@@ -56,6 +61,12 @@ export const getMyTeam = createServerFn({ method: "POST" })
         name: team.name,
         inviteCode: team.invite_code,
         isOwner: team.owner_id === userId,
+        sharedTarget: team.shared_target,
+        sharedFrequency: team.shared_frequency,
+      },
+      membership: {
+        role: membership.role,
+        followsShared: membership.follow_shared_target ?? false,
       },
       members,
     };
@@ -121,6 +132,44 @@ export const renameTeam = createServerFn({ method: "POST" })
       .update({ name: data.name })
       .eq("id", data.teamId)
       .eq("owner_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Owner-only: set (or clear) the squad's shared daily target. */
+export const setSharedTarget = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        teamId: z.string().uuid(),
+        sharedTarget: z.number().int().min(1).max(500).nullable(),
+        sharedFrequency: z.number().int().min(1).max(12).nullable(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("teams")
+      .update({ shared_target: data.sharedTarget, shared_frequency: data.sharedFrequency })
+      .eq("id", data.teamId)
+      .eq("owner_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Each member opts in or out of the shared target for their own membership only. */
+export const setFollowSharedTarget = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ teamId: z.string().uuid(), follow: z.boolean() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("team_members")
+      .update({ follow_shared_target: data.follow })
+      .eq("team_id", data.teamId)
+      .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

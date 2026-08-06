@@ -49,6 +49,32 @@ export const getToday = createServerFn({ method: "POST" })
 
 
 
+    // Members who opted in follow their squad's shared target instead of their own.
+    let targetSource: "personal" | "squad" = "personal";
+    let squadName: string | null = null;
+    const { data: membership } = await supabase
+      .from("team_members")
+      .select("follow_shared_target, teams(name, shared_target, shared_frequency)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const squad = membership?.teams as unknown as
+      | { name: string; shared_target: number | null; shared_frequency: number | null }
+      | null
+      | undefined;
+    if (membership?.follow_shared_target && squad?.shared_target) {
+      targetSource = "squad";
+      squadName = squad.name;
+      const frequency = squad.shared_frequency ?? settings.frequency;
+      settings = {
+        ...settings,
+        daily_target: squad.shared_target,
+        frequency,
+        slot_times: slotTimesFor(frequency),
+      };
+    }
+
     const since = new Date(`${data.today}T00:00:00Z`);
     since.setUTCDate(since.getUTCDate() - 60);
     const sinceDate = since.toISOString().slice(0, 10);
@@ -125,6 +151,8 @@ export const getToday = createServerFn({ method: "POST" })
         disclaimerAcceptedAt: settings.disclaimer_accepted_at,
         onboardingCompletedAt: settings.onboarding_completed_at,
         remindersEnabled: settings.reminders_enabled,
+        targetSource,
+        squadName,
       },
       repsBySlot,
       depositedToday,
