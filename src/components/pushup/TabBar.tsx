@@ -26,27 +26,16 @@ export function TabBar({ active = 0 }: { active?: number }) {
           );
           return (
             <li key={item.label} className="flex-1">
-              {item.to ? (
-                <Link
-                  to={item.to}
-                  aria-current={isActive ? "page" : undefined}
-                  aria-label={item.label}
-                  className={className}
-                >
-                  <Icon className="size-5" aria-hidden="true" />
-                  {item.label}
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  aria-label={`${item.label} — coming soon`}
-                  disabled
-                  className={cn(className, "opacity-50")}
-                >
-                  <Icon className="size-5" aria-hidden="true" />
-                  {item.label}
-                </button>
-              )}
+              <Link
+                to={item.to}
+                aria-current={isActive ? "page" : undefined}
+                aria-label={item.label}
+                className={className}
+              >
+                <Icon className="size-5" aria-hidden="true" />
+                {item.label}
+              </Link>
+
             </li>
           );
         })}
