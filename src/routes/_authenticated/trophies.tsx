@@ -8,6 +8,8 @@ import { DayDetailsSheet } from "@/components/pushup/DayDetailsSheet";
 
 import { buildAchievements } from "@/lib/achievements";
 import { getStats } from "@/lib/pushups.functions";
+import type { DayStatus } from "@/lib/streaks";
+
 
 
 function localToday(): string {
