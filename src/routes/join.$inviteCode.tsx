@@ -1,8 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Users } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
+import { supabase } from "@/integrations/supabase/client";
+import { joinTeam } from "@/lib/teams.functions";
 
 export const Route = createFileRoute("/join/$inviteCode")({
   head: ({ params }) => ({
@@ -30,11 +33,38 @@ function JoinPage() {
   const { inviteCode } = Route.useParams();
   const session = useSession();
   const navigate = useNavigate();
+  const joining = useRef(false);
+  const [teamName, setTeamName] = useState<string | null>(null);
 
-  // Once signed in, the invite is accepted and the member lands on their ring.
+  // Show who invited them before sign-in.
   useEffect(() => {
-    if (session) void navigate({ to: "/today", replace: true });
-  }, [session, navigate]);
+    let cancelled = false;
+    void supabase
+      .rpc("team_preview_by_code", { _code: inviteCode })
+      .then(({ data }) => {
+        const row = Array.isArray(data) ? data[0] : null;
+        if (!cancelled && row) setTeamName(row.team_name);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteCode]);
+
+  // Once signed in, accept the invite, then land on the squad screen.
+  useEffect(() => {
+    if (!session || joining.current) return;
+    joining.current = true;
+    void (async () => {
+      try {
+        await joinTeam({ data: { code: inviteCode } });
+        toast.success("You're in! Welcome to the squad.");
+        void navigate({ to: "/squad", replace: true });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Could not join that team.");
+        void navigate({ to: "/today", replace: true });
+      }
+    })();
+  }, [session, inviteCode, navigate]);
 
   return (
     <main className="flex min-h-screen flex-col justify-center bg-foreground px-5 py-12 text-card">
@@ -42,7 +72,9 @@ function JoinPage() {
         <span className="inline-flex size-14 items-center justify-center rounded-2xl bg-primary">
           <Users className="size-7 text-primary-foreground" aria-hidden="true" />
         </span>
-        <h1 className="mt-6 text-3xl font-bold leading-tight">You're invited to a team</h1>
+        <h1 className="mt-6 text-3xl font-bold leading-tight">
+          {teamName ? `You're invited to ${teamName}` : "You're invited to a team"}
+        </h1>
         <p className="mt-3 text-sm leading-relaxed text-card/70">
           Invite code{" "}
           <span className="font-mono font-semibold text-card">{inviteCode}</span>. Create a free

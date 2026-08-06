@@ -1,12 +1,13 @@
 import { Activity, HeartPulse, Trophy, User, Users } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
-  { label: "Progress", icon: Activity },
-  { label: "Squad", icon: Users },
-  { label: "Trophies", icon: Trophy },
-  { label: "Wellbeing", icon: HeartPulse },
-  { label: "Me", icon: User },
+  { label: "Progress", icon: Activity, to: "/today" as const },
+  { label: "Squad", icon: Users, to: "/squad" as const },
+  { label: "Trophies", icon: Trophy, to: null },
+  { label: "Wellbeing", icon: HeartPulse, to: null },
+  { label: "Me", icon: User, to: null },
 ];
 
 export function TabBar({ active = 0 }: { active?: number }) {
@@ -19,20 +20,33 @@ export function TabBar({ active = 0 }: { active?: number }) {
         {ITEMS.map((item, i) => {
           const Icon = item.icon;
           const isActive = i === active;
+          const className = cn(
+            "flex min-h-14 w-full flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-semibold transition-colors",
+            isActive ? "text-primary" : "text-muted-foreground",
+          );
           return (
             <li key={item.label} className="flex-1">
-              <button
-                type="button"
-                aria-current={isActive ? "page" : undefined}
-                aria-label={item.label}
-                className={cn(
-                  "flex min-h-14 w-full flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-semibold transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                <Icon className="size-5" aria-hidden="true" />
-                {item.label}
-              </button>
+              {item.to ? (
+                <Link
+                  to={item.to}
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={item.label}
+                  className={className}
+                >
+                  <Icon className="size-5" aria-hidden="true" />
+                  {item.label}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  aria-label={`${item.label} — coming soon`}
+                  disabled
+                  className={cn(className, "opacity-50")}
+                >
+                  <Icon className="size-5" aria-hidden="true" />
+                  {item.label}
+                </button>
+              )}
             </li>
           );
         })}

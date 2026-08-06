@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { Flame, Info, LogOut, PiggyBank, Plus, Share2, Sliders } from "lucide-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +21,7 @@ import { SetChips } from "@/components/pushup/SetChips";
 import { TabBar } from "@/components/pushup/TabBar";
 import { TargetSheet } from "@/components/pushup/TargetSheet";
 import { composeSets } from "@/lib/pushup-schedule";
+import { createTeam, getMyTeam, renameTeam } from "@/lib/teams.functions";
 import {
   deleteLog,
   getToday,
@@ -82,7 +89,13 @@ function Today() {
   const options = todayQueryOptions(today);
   const { data } = useSuspenseQuery(options);
 
-  const [teamName, setTeamName] = useState("Morning Crew");
+  const teamQuery = useQuery({
+    queryKey: ["team"],
+    queryFn: () => getMyTeam(),
+    staleTime: 15_000,
+  });
+  const team = teamQuery.data?.team ?? null;
+  const teamName = team?.name ?? "Solo challenge";
   const [logOpen, setLogOpen] = useState(false);
   const [bankOpen, setBankOpen] = useState(false);
   const [targetOpen, setTargetOpen] = useState(false);
@@ -103,6 +116,17 @@ function Today() {
   const targetMutation = useMutation({
     mutationFn: useServerFn(updateTargetSettings),
     onSuccess: invalidate,
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const invalidateTeam = () => queryClient.invalidateQueries({ queryKey: ["team"] });
+  const createTeamMutation = useMutation({
+    mutationFn: useServerFn(createTeam),
+    onSuccess: invalidateTeam,
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const renameTeamMutation = useMutation({
+    mutationFn: useServerFn(renameTeam),
+    onSuccess: invalidateTeam,
     onError: (error: Error) => toast.error(error.message),
   });
   const bankMutation = useMutation({
@@ -287,7 +311,7 @@ function Today() {
               onClick={() => setInviteOpen(true)}
             >
               <Share2 className="size-5" aria-hidden="true" />
-              Invite friends to {teamName}
+              {team ? `Invite friends to ${team.name}` : "Start a team & invite friends"}
             </Button>
           </div>
         </section>
@@ -347,9 +371,17 @@ function Today() {
       <InviteSheet
         open={inviteOpen}
         onOpenChange={setInviteOpen}
-        teamName={teamName}
-        onTeamNameChange={setTeamName}
-        inviteCode="PUSH-13X4"
+        team={team}
+        busy={createTeamMutation.isPending || renameTeamMutation.isPending}
+        onCreateTeam={async (name) => {
+          await createTeamMutation.mutateAsync({ data: { name } });
+          toast.success(`${name} created — share your link!`);
+        }}
+        onRenameTeam={async (name) => {
+          if (!team) return;
+          await renameTeamMutation.mutateAsync({ data: { teamId: team.id, name } });
+          toast.success(`Team renamed to ${name}.`);
+        }}
       />
     </div>
   );
