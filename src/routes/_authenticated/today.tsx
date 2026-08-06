@@ -135,6 +135,15 @@ function Today() {
     onSuccess: invalidate,
     onError: (error: Error) => toast.error(error.message),
   });
+  const undoBankMutation = useMutation({
+    mutationFn: useServerFn(undoBankEntry),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Transfer reverted.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
 
   const { dailyTarget, frequency, slotTimes } = data.settings;
   const sets = composeSets(
