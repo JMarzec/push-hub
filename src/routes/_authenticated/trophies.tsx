@@ -57,6 +57,14 @@ const ICONS = {
   zap: Zap,
 } as const;
 
+type DayChange = {
+  date: string;
+  prevStatus: DayStatus;
+  status: DayStatus;
+  prevReps: number;
+  reps: number;
+};
+
 type StreakDiff = {
   current: number;
   longest: number;
@@ -64,9 +72,37 @@ type StreakDiff = {
   prevCurrent: number;
   prevLongest: number;
   prevRestDaysLeft: number;
+  days: DayChange[];
 };
 
 const delta = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+
+const STATUS_LABEL: Record<DayStatus, string> = {
+  hit: "Counted",
+  rest: "Forgiven rest",
+  break: "Streak reset",
+  pending: "Today, open",
+  none: "No history",
+};
+
+function diffTimelines(before: TimelineDay[], after: TimelineDay[]): DayChange[] {
+  const prev = new Map(before.map((d) => [d.date, d]));
+  const changes: DayChange[] = [];
+  for (const d of after) {
+    const p = prev.get(d.date);
+    if (!p) continue;
+    if (p.status !== d.status || p.reps !== d.reps) {
+      changes.push({
+        date: d.date,
+        prevStatus: p.status,
+        status: d.status,
+        prevReps: p.reps,
+        reps: d.reps,
+      });
+    }
+  }
+  return changes.reverse();
+}
 
 function Trophies() {
   const [today] = useState(localToday);
@@ -92,11 +128,13 @@ function Trophies() {
         prevCurrent: before.currentStreak,
         prevLongest: before.longestStreak,
         prevRestDaysLeft: before.restDaysLeft,
+        days: diffTimelines(before.streakTimeline, after.streakTimeline),
       });
     } finally {
       setRecalculating(false);
     }
   }
+
 
   const achievements = buildAchievements(data);
   const unlocked = achievements.filter((a) => a.progress >= a.goal).length;
