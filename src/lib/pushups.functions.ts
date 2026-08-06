@@ -392,8 +392,10 @@ export const updateReminderSettings = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const patch: Record<string, unknown> = { reminders_enabled: data.enabled };
-    if (data.slotTimes) patch["slot_times"] = data.slotTimes;
+    const patch: { reminders_enabled: boolean; slot_times?: string[] } = {
+      reminders_enabled: data.enabled,
+    };
+    if (data.slotTimes) patch.slot_times = data.slotTimes;
     const { error } = await context.supabase
       .from("user_settings")
       .update(patch)
