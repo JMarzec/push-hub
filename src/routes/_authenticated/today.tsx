@@ -328,9 +328,16 @@ function Today() {
             Today's wellbeing fact
           </h2>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Regular moderate exercise is linked with better sleep quality — and better sleep is one
-            of the strongest supports for day-to-day mental wellbeing.
+            {todaysFact.body}
           </p>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="mt-2 -ml-2 font-semibold text-primary"
+          >
+            <Link to="/wellbeing">See all wellbeing facts</Link>
+          </Button>
         </section>
 
         <p className="mt-5 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
