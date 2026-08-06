@@ -57,11 +57,55 @@ const ICONS = {
   zap: Zap,
 } as const;
 
+type StreakDiff = {
+  current: number;
+  longest: number;
+  restDaysLeft: number;
+  prevCurrent: number;
+  prevLongest: number;
+  prevRestDaysLeft: number;
+};
+
+const delta = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+
 function Trophies() {
   const [today] = useState(localToday);
   const { data } = useSuspenseQuery(statsQueryOptions(today));
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState<TimelineDay | null>(null);
+  const [diff, setDiff] = useState<StreakDiff | null>(null);
+  const [recalculating, setRecalculating] = useState(false);
+  const snapshot = useRef(data);
+  snapshot.current = data;
+
+  async function handleLogChanged() {
+    const before = snapshot.current;
+    setRecalculating(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ["stats"] });
+      await queryClient.invalidateQueries({ queryKey: ["today"] });
+      const after = await queryClient.fetchQuery(statsQueryOptions(today));
+      setDiff({
+        current: after.currentStreak,
+        longest: after.longestStreak,
+        restDaysLeft: after.restDaysLeft,
+        prevCurrent: before.currentStreak,
+        prevLongest: before.longestStreak,
+        prevRestDaysLeft: before.restDaysLeft,
+      });
+    } finally {
+      setRecalculating(false);
+    }
+  }
+
   const achievements = buildAchievements(data);
   const unlocked = achievements.filter((a) => a.progress >= a.goal).length;
+  const changed =
+    diff !== null &&
+    (diff.current !== diff.prevCurrent ||
+      diff.longest !== diff.prevLongest ||
+      diff.restDaysLeft !== diff.prevRestDaysLeft);
+
 
   const stats = [
     { label: "All-time reps", value: data.totalReps.toLocaleString() },
