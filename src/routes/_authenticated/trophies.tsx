@@ -3,6 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { Flame, Lock, Medal, PiggyBank, Trophy, Users, Zap } from "lucide-react";
 import { TabBar } from "@/components/pushup/TabBar";
+import { StreakTimeline } from "@/components/pushup/StreakTimeline";
+
 import { buildAchievements } from "@/lib/achievements";
 import { getStats } from "@/lib/pushups.functions";
 
