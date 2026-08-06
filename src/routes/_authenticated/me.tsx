@@ -156,10 +156,9 @@ function Me() {
   const team = teamQuery.data?.team ?? null;
   const slotTimes = settings?.slotTimes ?? ["08:00", "12:00", "17:00", "21:00"];
   const remindersEnabled = settings?.remindersEnabled ?? false;
-  const loggedToday = (settingsQuery.data?.repsBySlot ?? []).reduce(
-    (sum: number, n: number) => sum + n,
-    0,
-  );
+  const loggedToday = Object.values(
+    (settingsQuery.data?.repsBySlot ?? {}) as Record<string, number>,
+  ).reduce((sum, n) => sum + n, 0);
 
   const reminders = useReminders({
     enabled: remindersEnabled,
