@@ -133,7 +133,7 @@ export const getToday = createServerFn({ method: "POST" })
       streak,
       dayNumber,
       completedDays,
-      planApplied: planApplied.applied,
+      planApplied: planApplied.applied !== null,
       todaysLogs: logs
         .filter((l) => l.log_date === data.today)
         .map((l) => ({ id: l.id, reps: l.reps, slot: l.slot, loggedAt: l.logged_at })),

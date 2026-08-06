@@ -79,7 +79,7 @@ function Planner() {
 
   const saveMutation = useMutation({
     mutationFn: useServerFn(savePlan),
-    onSuccess: (result) => {
+    onSuccess: (result: { id: string; appliedNow: boolean }) => {
       invalidate();
       toast.success(
         result.appliedNow
