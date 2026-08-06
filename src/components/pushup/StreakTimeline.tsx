@@ -137,15 +137,18 @@ export function StreakTimeline({
           const meta = STATUS_META[d.status];
           return (
             <li key={d.date}>
-              <div
-                className={`h-7 rounded-md ${meta.dot} ${
+              <button
+                type="button"
+                onClick={() => onSelectDay?.(d)}
+                className={`h-7 w-full rounded-md ${meta.dot} ${
                   d.inCurrentStreak ? "outline outline-2 outline-offset-1 outline-primary/50" : ""
                 }`}
                 title={`${d.date} · ${d.reps} reps · ${meta.label}`}
               >
                 <span className="sr-only">{`${d.date}: ${d.reps} reps, ${meta.label}`}</span>
-              </div>
+              </button>
             </li>
+
           );
         })}
       </ol>
