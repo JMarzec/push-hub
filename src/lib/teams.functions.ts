@@ -22,11 +22,6 @@ export interface TeamMemberStat {
   repsTotal: number;
 }
 
-async function loadTeamStats(teamId: string): Promise<TeamMemberStat[]> {
-  const { fetchTeamStats } = await import("./teams.server");
-  return fetchTeamStats(teamId);
-}
-
 export const getMyTeam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -51,7 +46,8 @@ export const getMyTeam = createServerFn({ method: "POST" })
 
     // Roster + teammate stats need to read other members' rows, so they run
     // through trusted server code after membership above is confirmed.
-    const members = await loadTeamStats(team.id);
+    const { fetchTeamStats } = await import("./teams.server");
+    const members = await fetchTeamStats(team.id);
 
     return {
       team: {
