@@ -229,6 +229,21 @@ function Squad() {
                     <span className="w-5 text-sm font-bold text-muted-foreground tabular-nums">
                       {i + 1}
                     </span>
+                    <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-xs font-extrabold text-muted-foreground">
+                      {m.avatarUrl ? (
+                        <img
+                          src={m.avatarUrl}
+                          alt={`${m.displayName}'s profile photo`}
+                          className="size-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span aria-hidden="true">
+                          {(m.displayName || "?").slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
+                    </span>
+
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">
                         {m.displayName}

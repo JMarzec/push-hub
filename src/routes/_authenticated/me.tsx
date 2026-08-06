@@ -9,15 +9,23 @@ import {
 } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Flame, Info, LogOut, Sliders, Trophy, User, Users } from "lucide-react";
+import { Bell, CalendarClock, Flame, Info, LogOut, Sliders, Trophy, User, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TabBar } from "@/components/pushup/TabBar";
 import { TargetSheet } from "@/components/pushup/TargetSheet";
+import { AvatarPicker } from "@/components/pushup/AvatarPicker";
+import { ReminderSheet } from "@/components/pushup/ReminderSheet";
+import { useReminders } from "@/hooks/useReminders";
 import { supabase } from "@/integrations/supabase/client";
-import { getProfile, updateProfile } from "@/lib/profile.functions";
-import { getStats, getToday, updateTargetSettings } from "@/lib/pushups.functions";
+import { getProfile, removeAvatar, setAvatar, updateProfile } from "@/lib/profile.functions";
+import {
+  getStats,
+  getToday,
+  updateReminderSettings,
+  updateTargetSettings,
+} from "@/lib/pushups.functions";
 import { getMyTeam, leaveTeam } from "@/lib/teams.functions";
 
 function localToday(): string {
@@ -64,6 +72,7 @@ function Me() {
   const queryClient = useQueryClient();
   const [today] = useState(localToday);
   const [targetOpen, setTargetOpen] = useState(false);
+  const [remindersOpen, setRemindersOpen] = useState(false);
 
   const { data: profile } = useSuspenseQuery(profileQueryOptions());
 
@@ -96,6 +105,35 @@ function Me() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const avatarMutation = useMutation({
+    mutationFn: useServerFn(setAvatar),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["profile"] });
+      void queryClient.invalidateQueries({ queryKey: ["team"] });
+      toast.success("Profile photo updated.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const avatarRemoveMutation = useMutation({
+    mutationFn: useServerFn(removeAvatar),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["profile"] });
+      void queryClient.invalidateQueries({ queryKey: ["team"] });
+      toast.success("Profile photo removed.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const reminderMutation = useMutation({
+    mutationFn: useServerFn(updateReminderSettings),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["today"] });
+      toast.success("Reminder settings saved.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const targetMutation = useMutation({
     mutationFn: useServerFn(updateTargetSettings),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["today"] }),
@@ -116,6 +154,19 @@ function Me() {
   const frequency = settings?.frequency ?? 4;
   const stats = statsQuery.data;
   const team = teamQuery.data?.team ?? null;
+  const slotTimes = settings?.slotTimes ?? ["08:00", "12:00", "17:00", "21:00"];
+  const remindersEnabled = settings?.remindersEnabled ?? false;
+  const loggedToday = Object.values(
+    (settingsQuery.data?.repsBySlot ?? {}) as Record<string, number>,
+  ).reduce((sum, n) => sum + n, 0);
+
+  const reminders = useReminders({
+    enabled: remindersEnabled,
+    today,
+    slotTimes,
+    perSet: Math.ceil(dailyTarget / frequency),
+    remaining: Math.max(dailyTarget - loggedToday, 0),
+  });
 
   const initials =
     (profile.displayName || user.email || "?")
@@ -145,11 +196,16 @@ function Me() {
     <div className="flex min-h-screen flex-col bg-background">
       <header className="bg-foreground px-5 pb-8 pt-6 text-card">
         <div className="mx-auto flex max-w-md items-center gap-4">
-          <span
-            aria-hidden="true"
-            className="flex size-14 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-extrabold text-primary-foreground"
-          >
-            {initials}
+          <span className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-lg font-extrabold text-primary-foreground">
+            {profile.avatarUrl ? (
+              <img
+                src={profile.avatarUrl}
+                alt="Your profile photo"
+                className="size-full object-cover"
+              />
+            ) : (
+              <span aria-hidden="true">{initials}</span>
+            )}
           </span>
           <div className="min-w-0">
             <h1 className="truncate text-2xl font-bold">
@@ -183,7 +239,27 @@ function Me() {
           ))}
         </section>
 
-        <section className="mt-5 rounded-2xl border border-border bg-card p-4" aria-labelledby="name-heading">
+        <section className="mt-5 rounded-2xl border border-border bg-card p-4" aria-labelledby="photo-heading">
+          <h2 id="photo-heading" className="text-sm font-bold text-foreground">
+            Profile photo
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Your squad sees this next to your name on the leaderboard.
+          </p>
+          <div className="mt-3">
+            <AvatarPicker
+              userId={user.id}
+              avatarUrl={profile.avatarUrl}
+              initials={initials}
+              hasAvatar={Boolean(profile.avatarPath)}
+              busy={avatarMutation.isPending || avatarRemoveMutation.isPending}
+              onUploaded={(path) => avatarMutation.mutate({ data: { path } })}
+              onRemove={() => avatarRemoveMutation.mutate({})}
+            />
+          </div>
+        </section>
+
+        <section className="mt-4 rounded-2xl border border-border bg-card p-4" aria-labelledby="name-heading">
           <h2 id="name-heading" className="text-sm font-bold text-foreground">
             Display name
           </h2>
@@ -228,6 +304,42 @@ function Me() {
           >
             <Sliders className="size-5" aria-hidden="true" />
             Adjust count & frequency
+          </Button>
+        </section>
+
+        <section className="mt-4 rounded-2xl border border-border bg-card p-4" aria-labelledby="reminders-heading">
+          <h2 id="reminders-heading" className="text-sm font-bold text-foreground">
+            Reminders
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {reminders.permission === "unsupported"
+              ? "Your browser doesn't support notifications."
+              : remindersEnabled
+                ? `On · ${slotTimes.join(", ")}`
+                : "Off — turn on nudges for each set time."}
+          </p>
+          <Button
+            variant="outline"
+            className="mt-3 h-11 w-full rounded-full font-bold"
+            onClick={() => setRemindersOpen(true)}
+          >
+            <Bell className="size-5" aria-hidden="true" />
+            Manage reminders
+          </Button>
+        </section>
+
+        <section className="mt-4 rounded-2xl border border-border bg-card p-4" aria-labelledby="planner-heading">
+          <h2 id="planner-heading" className="text-sm font-bold text-foreground">
+            Goal planner
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Schedule future target and frequency changes, and watch your streak respond.
+          </p>
+          <Button asChild variant="outline" className="mt-3 h-11 w-full rounded-full font-bold">
+            <Link to="/planner">
+              <CalendarClock className="size-5" aria-hidden="true" />
+              Open planner
+            </Link>
           </Button>
         </section>
 
@@ -289,6 +401,19 @@ function Me() {
             `Target set: ${nextTarget} push-ups across ${nextFrequency} ${nextFrequency === 1 ? "set" : "sets"} a day.`,
           );
         }}
+      />
+
+      <ReminderSheet
+        open={remindersOpen}
+        onOpenChange={setRemindersOpen}
+        enabled={remindersEnabled}
+        slotTimes={slotTimes}
+        permission={reminders.permission}
+        onRequestPermission={reminders.request}
+        onSendTest={reminders.sendTest}
+        onSave={(enabled, nextTimes) =>
+          reminderMutation.mutate({ data: { enabled, slotTimes: nextTimes } })
+        }
       />
     </div>
   );

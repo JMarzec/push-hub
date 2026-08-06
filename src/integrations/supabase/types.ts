@@ -49,18 +49,21 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           display_name: string
           id: string
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           display_name?: string
           id: string
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           display_name?: string
           id?: string
@@ -96,6 +99,42 @@ export type Database = {
           logged_at?: string
           reps?: number
           slot?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      target_plans: {
+        Row: {
+          applied_at: string | null
+          created_at: string
+          daily_target: number
+          effective_date: string
+          frequency: number
+          id: string
+          note: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          created_at?: string
+          daily_target: number
+          effective_date: string
+          frequency: number
+          id?: string
+          note?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          created_at?: string
+          daily_target?: number
+          effective_date?: string
+          frequency?: number
+          id?: string
+          note?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -172,6 +211,7 @@ export type Database = {
           frequency: number
           onboarding_completed_at: string | null
           parq_passed: boolean
+          reminders_enabled: boolean
           slot_times: string[]
           start_date: string
           timezone: string
@@ -186,6 +226,7 @@ export type Database = {
           frequency?: number
           onboarding_completed_at?: string | null
           parq_passed?: boolean
+          reminders_enabled?: boolean
           slot_times?: string[]
           start_date?: string
           timezone?: string
@@ -200,6 +241,7 @@ export type Database = {
           frequency?: number
           onboarding_completed_at?: string | null
           parq_passed?: boolean
+          reminders_enabled?: boolean
           slot_times?: string[]
           start_date?: string
           timezone?: string

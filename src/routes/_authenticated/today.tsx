@@ -20,6 +20,7 @@ import { ProgressRing } from "@/components/pushup/ProgressRing";
 import { SetChips } from "@/components/pushup/SetChips";
 import { TabBar } from "@/components/pushup/TabBar";
 import { TargetSheet } from "@/components/pushup/TargetSheet";
+import { useReminders } from "@/hooks/useReminders";
 import { composeSets } from "@/lib/pushup-schedule";
 import { factForDate } from "@/lib/wellbeing";
 import { createTeam, getMyTeam, renameTeam } from "@/lib/teams.functions";
@@ -157,6 +158,15 @@ function Today() {
   );
 
   const total = sets.reduce((sum, s) => sum + s.reps, 0);
+
+  // Keep set-time nudges firing while the Home screen is open.
+  useReminders({
+    enabled: data.settings.remindersEnabled,
+    today,
+    slotTimes: data.settings.slotTimes,
+    perSet: Math.ceil(data.settings.dailyTarget / data.settings.frequency),
+    remaining: Math.max(data.settings.dailyTarget - total, 0),
+  });
   const todaysFact = factForDate(data.settings.startDate, today);
   const nextSet = sets.find((s) => s.reps < s.target) ?? sets[sets.length - 1]!;
   const surplus = Math.max(total - dailyTarget, 0);
