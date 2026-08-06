@@ -152,6 +152,7 @@ function Today() {
 
 
   const { dailyTarget, frequency, slotTimes } = data.settings;
+  const followingSquadTarget = data.settings.targetSource === "squad";
   const sets = composeSets(
     dailyTarget,
     slotTimes,
@@ -321,15 +322,31 @@ function Today() {
               <p className="text-xs text-muted-foreground tabular-nums">
                 {Math.ceil(dailyTarget / frequency)} per set · {bank} banked
               </p>
+              {followingSquadTarget ? (
+                <p className="mt-0.5 text-xs font-semibold text-primary">
+                  Following {data.settings.squadName ?? "squad"} target
+                </p>
+              ) : null}
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="font-semibold text-primary"
-              onClick={() => setTargetOpen(true)}
-            >
-              Adjust
-            </Button>
+            {followingSquadTarget ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="font-semibold text-primary"
+                onClick={() => void navigate({ to: "/squad" })}
+              >
+                Squad
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="font-semibold text-primary"
+                onClick={() => setTargetOpen(true)}
+              >
+                Adjust
+              </Button>
+            )}
           </div>
 
           <div className="mt-5 space-y-2">

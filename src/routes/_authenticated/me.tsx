@@ -300,14 +300,31 @@ function Me() {
             {dailyTarget} push-ups across {frequency} {frequency === 1 ? "set" : "sets"} a day ·{" "}
             {Math.ceil(dailyTarget / frequency)} per set
           </p>
-          <Button
-            variant="outline"
-            className="mt-3 h-11 w-full rounded-full font-bold"
-            onClick={() => setTargetOpen(true)}
-          >
-            <Sliders className="size-5" aria-hidden="true" />
-            Adjust count & frequency
-          </Button>
+          {todayData?.settings.targetSource === "squad" ? (
+            <>
+              <p className="mt-1 text-sm font-semibold text-primary">
+                Coming from your squad target
+                {todayData.settings.squadName ? ` (${todayData.settings.squadName})` : ""}.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-3 h-11 w-full rounded-full font-bold"
+                onClick={() => void navigate({ to: "/squad" })}
+              >
+                <Sliders className="size-5" aria-hidden="true" />
+                Manage in squad
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="outline"
+              className="mt-3 h-11 w-full rounded-full font-bold"
+              onClick={() => setTargetOpen(true)}
+            >
+              <Sliders className="size-5" aria-hidden="true" />
+              Adjust count & frequency
+            </Button>
+          )}
         </section>
 
         <section className="mt-4 rounded-2xl border border-border bg-card p-4" aria-labelledby="reminders-heading">
