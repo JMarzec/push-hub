@@ -46,12 +46,15 @@ export async function addTeamMember(teamId: string, userId: string): Promise<voi
 }
 
 /** Caller MUST have verified the requesting user belongs to `teamId` first. */
-export async function fetchTeamStats(teamId: string): Promise<TeamMemberStat[]> {
+export async function fetchTeamStats(
+  teamId: string,
+  sharedTarget: number | null = null,
+): Promise<TeamMemberStat[]> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   const { data: roster, error: rosterError } = await supabaseAdmin
     .from("team_members")
-    .select("user_id, role")
+    .select("user_id, role, follow_shared_target")
     .eq("team_id", teamId);
   if (rosterError) throw new Error(rosterError.message);
   const memberIds = (roster ?? []).map((m) => m.user_id);
@@ -98,12 +101,16 @@ export async function fetchTeamStats(teamId: string): Promise<TeamMemberStat[]> 
   return (roster ?? [])
     .map((member) => {
       const bucket = totals.get(member.user_id) ?? { today: 0, week: 0, all: 0 };
+      const followsShared = Boolean(member.follow_shared_target) && sharedTarget !== null;
       return {
         userId: member.user_id,
         displayName: nameById.get(member.user_id)?.trim() || "Member",
         role: member.role,
         repsToday: bucket.today,
-        dailyTarget: targetById.get(member.user_id) ?? 50,
+        dailyTarget: followsShared
+          ? (sharedTarget as number)
+          : (targetById.get(member.user_id) ?? 50),
+        followsShared,
         repsWeek: bucket.week,
         repsTotal: bucket.all,
         avatarUrl: avatarById.get(member.user_id) ?? null,
