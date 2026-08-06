@@ -7,7 +7,7 @@ const ITEMS = [
   { label: "Squad", icon: Users, to: "/squad" as const },
   { label: "Trophies", icon: Trophy, to: "/trophies" as const },
   { label: "Wellbeing", icon: HeartPulse, to: "/wellbeing" as const },
-  { label: "Me", icon: User, to: null },
+  { label: "Me", icon: User, to: "/me" as const },
 ];
 
 export function TabBar({ active = 0 }: { active?: number }) {
