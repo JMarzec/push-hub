@@ -8,6 +8,8 @@ import { DayDetailsSheet } from "@/components/pushup/DayDetailsSheet";
 
 import { buildAchievements } from "@/lib/achievements";
 import { getStats } from "@/lib/pushups.functions";
+import type { DayStatus } from "@/lib/streaks";
+
 
 
 function localToday(): string {
@@ -57,6 +59,14 @@ const ICONS = {
   zap: Zap,
 } as const;
 
+type DayChange = {
+  date: string;
+  prevStatus: DayStatus;
+  status: DayStatus;
+  prevReps: number;
+  reps: number;
+};
+
 type StreakDiff = {
   current: number;
   longest: number;
@@ -64,9 +74,37 @@ type StreakDiff = {
   prevCurrent: number;
   prevLongest: number;
   prevRestDaysLeft: number;
+  days: DayChange[];
 };
 
 const delta = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+
+const STATUS_LABEL: Record<DayStatus, string> = {
+  hit: "Counted",
+  rest: "Forgiven rest",
+  break: "Streak reset",
+  pending: "Today, open",
+  none: "No history",
+};
+
+function diffTimelines(before: TimelineDay[], after: TimelineDay[]): DayChange[] {
+  const prev = new Map(before.map((d) => [d.date, d]));
+  const changes: DayChange[] = [];
+  for (const d of after) {
+    const p = prev.get(d.date);
+    if (!p) continue;
+    if (p.status !== d.status || p.reps !== d.reps) {
+      changes.push({
+        date: d.date,
+        prevStatus: p.status,
+        status: d.status,
+        prevReps: p.reps,
+        reps: d.reps,
+      });
+    }
+  }
+  return changes.reverse();
+}
 
 function Trophies() {
   const [today] = useState(localToday);
@@ -92,11 +130,13 @@ function Trophies() {
         prevCurrent: before.currentStreak,
         prevLongest: before.longestStreak,
         prevRestDaysLeft: before.restDaysLeft,
+        days: diffTimelines(before.streakTimeline, after.streakTimeline),
       });
     } finally {
       setRecalculating(false);
     }
   }
+
 
   const achievements = buildAchievements(data);
   const unlocked = achievements.filter((a) => a.progress >= a.goal).length;
@@ -204,6 +244,31 @@ function Trophies() {
                 </li>
               </ul>
             ) : null}
+            {!recalculating && diff ? (
+              <div className="mt-3">
+                <p className="text-[11px] font-bold text-foreground">
+                  {diff.days.length === 0
+                    ? "No day changed role"
+                    : `${diff.days.length} day${diff.days.length > 1 ? "s" : ""} changed role`}
+                </p>
+                {diff.days.length > 0 ? (
+                  <ul className="mt-2 divide-y divide-border overflow-hidden rounded-2xl bg-secondary">
+                    {diff.days.map((d) => (
+                      <li key={d.date} className="px-3 py-2">
+                        <p className="text-[11px] font-bold text-foreground tabular-nums">
+                          {d.date.slice(5).replace("-", "/")} · {d.prevReps} → {d.reps} reps
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {STATUS_LABEL[d.prevStatus]} → {STATUS_LABEL[d.status]}
+                          {d.prevStatus === d.status ? " (unchanged role)" : ""}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+
           </div>
         ) : null}
 
