@@ -213,31 +213,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_team_member: {
-        Args: { _team_id: string; _user_id: string }
-        Returns: boolean
-      }
-      join_team_by_code: { Args: { _code: string }; Returns: string }
-      team_preview_by_code: {
-        Args: { _code: string }
-        Returns: {
-          member_count: number
-          team_id: string
-          team_name: string
-        }[]
-      }
-      team_today_stats: {
-        Args: { _team_id: string }
-        Returns: {
-          daily_target: number
-          display_name: string
-          reps_today: number
-          reps_total: number
-          reps_week: number
-          role: string
-          user_id: string
-        }[]
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

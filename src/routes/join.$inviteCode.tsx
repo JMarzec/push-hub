@@ -4,8 +4,7 @@ import { Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
-import { supabase } from "@/integrations/supabase/client";
-import { joinTeam } from "@/lib/teams.functions";
+import { joinTeam, previewTeamByCode } from "@/lib/teams.functions";
 
 export const Route = createFileRoute("/join/$inviteCode")({
   head: ({ params }) => ({
@@ -40,17 +39,18 @@ function JoinPage() {
   // Show who invited them before sign-in.
   useEffect(() => {
     let cancelled = false;
-    void supabase
-      .rpc("team_preview_by_code", { _code: inviteCode })
-      .then(({ data, error }) => {
+    void previewTeamByCode({ data: { code: inviteCode } })
+      .then((team) => {
         if (cancelled) return;
-        const row = Array.isArray(data) ? data[0] : null;
-        if (error || !row) {
+        if (!team) {
           setStatus("invalid");
           return;
         }
-        setTeamName(row.team_name);
+        setTeamName(team.name);
         setStatus("found");
+      })
+      .catch(() => {
+        if (!cancelled) setStatus("invalid");
       });
     return () => {
       cancelled = true;
