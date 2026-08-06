@@ -57,10 +57,19 @@ interface UseRemindersArgs {
   remaining: number;
 }
 
+export type SlotDiagnostic = {
+  time: string;
+  status: "scheduled" | "fired" | "missed";
+  minutesAway: number;
+};
+
 export function useReminders({ enabled, today, slotTimes, perSet, remaining }: UseRemindersArgs) {
   const [permission, setPermission] = useState<NotificationPermissionState>(() =>
     supported() ? Notification.permission : "unsupported",
   );
+  const [schedule, setSchedule] = useState<SlotDiagnostic[]>([]);
+  // Re-evaluates the diagnostics roughly every minute so the troubleshooting screen stays live.
+  const [tick, setTick] = useState(0);
 
   const request = useCallback(async () => {
     if (!supported()) return "unsupported" as const;
@@ -79,19 +88,33 @@ export function useReminders({ enabled, today, slotTimes, perSet, remaining }: U
   }, []);
 
   useEffect(() => {
+    const interval = window.setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const fired = typeof window === "undefined" ? {} : readFired();
+
+    const diagnostics: SlotDiagnostic[] = slotTimes.map((time) => {
+      const minutesAway = minutesOfDay(time) - nowMinutes;
+      const status: SlotDiagnostic["status"] = fired[`${today}@${time}`]
+        ? "fired"
+        : minutesAway < 0
+          ? "missed"
+          : "scheduled";
+      return { time, status, minutesAway };
+    });
+    setSchedule(diagnostics);
+
     if (!enabled || !supported() || Notification.permission !== "granted") return;
     if (remaining <= 0) return;
 
-    const now = new Date();
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
-    const fired = readFired();
     const timers: number[] = [];
-
-    slotTimes.forEach((time, index) => {
-      const key = `${today}@${time}`;
-      if (fired[key]) return;
-      const delayMinutes = minutesOfDay(time) - nowMinutes;
-      if (delayMinutes < 0) return;
+    diagnostics.forEach((slot, index) => {
+      if (slot.status !== "scheduled") return;
+      const key = `${today}@${slot.time}`;
       const timer = window.setTimeout(
         () => {
           markFired(key);
@@ -101,13 +124,19 @@ export function useReminders({ enabled, today, slotTimes, perSet, remaining }: U
             tag: key,
           });
         },
-        Math.max(delayMinutes, 0) * 60_000,
+        Math.max(slot.minutesAway, 0) * 60_000,
       );
       timers.push(timer);
     });
 
     return () => timers.forEach((t) => window.clearTimeout(t));
-  }, [enabled, today, slotTimes, perSet, remaining, permission]);
+  }, [enabled, today, slotTimes, perSet, remaining, permission, tick]);
 
-  return { permission, request, sendTest, supported: supported() };
+  const active =
+    enabled && permission === "granted" && remaining > 0
+      ? schedule.filter((s) => s.status === "scheduled").length
+      : 0;
+
+  return { permission, request, sendTest, supported: supported(), schedule, scheduledCount: active };
 }
+

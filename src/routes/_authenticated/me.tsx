@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Bell, CalendarClock, Flame, Info, LogOut, Sliders, Trophy, User, Users } from "lucide-react";
+import { Bell, CalendarClock, Flame, Info, LogOut, Sliders, Trophy, User, Users, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -326,6 +326,13 @@ function Me() {
             <Bell className="size-5" aria-hidden="true" />
             Manage reminders
           </Button>
+          <Button asChild variant="ghost" className="mt-2 h-10 w-full rounded-full font-bold">
+            <Link to="/reminders">
+              <Wrench className="size-4" aria-hidden="true" />
+              Troubleshoot reminders
+            </Link>
+          </Button>
+
         </section>
 
         <section className="mt-4 rounded-2xl border border-border bg-card p-4" aria-labelledby="planner-heading">
