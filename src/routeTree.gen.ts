@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
+import { Route as AuthenticatedPlannerRouteImport } from './routes/_authenticated/planner'
 import { Route as AuthenticatedSquadRouteImport } from './routes/_authenticated/squad'
 import { Route as AuthenticatedTodayRouteImport } from './routes/_authenticated/today'
 import { Route as AuthenticatedTrophiesRouteImport } from './routes/_authenticated/trophies'
@@ -36,6 +37,11 @@ const AuthRoute = AuthRouteImport.update({
 const AuthenticatedMeRoute = AuthenticatedMeRouteImport.update({
   id: '/me',
   path: '/me',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPlannerRoute = AuthenticatedPlannerRouteImport.update({
+  id: '/planner',
+  path: '/planner',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSquadRoute = AuthenticatedSquadRouteImport.update({
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/me': typeof AuthenticatedMeRoute
+  '/planner': typeof AuthenticatedPlannerRoute
   '/squad': typeof AuthenticatedSquadRoute
   '/today': typeof AuthenticatedTodayRoute
   '/trophies': typeof AuthenticatedTrophiesRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/me': typeof AuthenticatedMeRoute
+  '/planner': typeof AuthenticatedPlannerRoute
   '/squad': typeof AuthenticatedSquadRoute
   '/today': typeof AuthenticatedTodayRoute
   '/trophies': typeof AuthenticatedTrophiesRoute
@@ -90,6 +98,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/me': typeof AuthenticatedMeRoute
+  '/_authenticated/planner': typeof AuthenticatedPlannerRoute
   '/_authenticated/squad': typeof AuthenticatedSquadRoute
   '/_authenticated/today': typeof AuthenticatedTodayRoute
   '/_authenticated/trophies': typeof AuthenticatedTrophiesRoute
@@ -102,6 +111,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/me'
+    | '/planner'
     | '/squad'
     | '/today'
     | '/trophies'
@@ -112,6 +122,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/me'
+    | '/planner'
     | '/squad'
     | '/today'
     | '/trophies'
@@ -123,6 +134,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/me'
+    | '/_authenticated/planner'
     | '/_authenticated/squad'
     | '/_authenticated/today'
     | '/_authenticated/trophies'
@@ -167,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/planner': {
+      id: '/_authenticated/planner'
+      path: '/planner'
+      fullPath: '/planner'
+      preLoaderRoute: typeof AuthenticatedPlannerRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/squad': {
       id: '/_authenticated/squad'
       path: '/squad'
@@ -207,6 +226,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
+  AuthenticatedPlannerRoute: typeof AuthenticatedPlannerRoute
   AuthenticatedSquadRoute: typeof AuthenticatedSquadRoute
   AuthenticatedTodayRoute: typeof AuthenticatedTodayRoute
   AuthenticatedTrophiesRoute: typeof AuthenticatedTrophiesRoute
@@ -215,6 +235,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMeRoute: AuthenticatedMeRoute,
+  AuthenticatedPlannerRoute: AuthenticatedPlannerRoute,
   AuthenticatedSquadRoute: AuthenticatedSquadRoute,
   AuthenticatedTodayRoute: AuthenticatedTodayRoute,
   AuthenticatedTrophiesRoute: AuthenticatedTrophiesRoute,
