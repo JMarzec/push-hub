@@ -20,6 +20,7 @@ export interface TeamMemberStat {
   dailyTarget: number;
   repsWeek: number;
   repsTotal: number;
+  avatarUrl: string | null;
 }
 
 export const getMyTeam = createServerFn({ method: "POST" })

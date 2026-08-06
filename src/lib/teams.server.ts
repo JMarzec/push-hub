@@ -61,7 +61,7 @@ export async function fetchTeamStats(teamId: string): Promise<TeamMemberStat[]> 
   const weekAgo = new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10);
 
   const [profiles, settings, logs] = await Promise.all([
-    supabaseAdmin.from("profiles").select("id, display_name").in("id", memberIds),
+    supabaseAdmin.from("profiles").select("id, display_name, avatar_url").in("id", memberIds),
     supabaseAdmin.from("user_settings").select("user_id, daily_target").in("user_id", memberIds),
     supabaseAdmin.from("pushup_logs").select("user_id, reps, log_date").in("user_id", memberIds),
   ]);
@@ -70,6 +70,19 @@ export async function fetchTeamStats(teamId: string): Promise<TeamMemberStat[]> 
   if (logs.error) throw new Error(logs.error.message);
 
   const nameById = new Map((profiles.data ?? []).map((p) => [p.id, p.display_name]));
+
+  // Avatars live in a private bucket, so teammates get short-lived signed URLs.
+  const avatarById = new Map<string, string>();
+  await Promise.all(
+    (profiles.data ?? [])
+      .filter((p) => p.avatar_url)
+      .map(async (p) => {
+        const signed = await supabaseAdmin.storage
+          .from("avatars")
+          .createSignedUrl(p.avatar_url as string, 3600);
+        if (signed.data?.signedUrl) avatarById.set(p.id, signed.data.signedUrl);
+      }),
+  );
   const targetById = new Map((settings.data ?? []).map((s) => [s.user_id, s.daily_target]));
 
   const totals = new Map<string, { today: number; week: number; all: number }>();
@@ -93,6 +106,7 @@ export async function fetchTeamStats(teamId: string): Promise<TeamMemberStat[]> 
         dailyTarget: targetById.get(member.user_id) ?? 50,
         repsWeek: bucket.week,
         repsTotal: bucket.all,
+        avatarUrl: avatarById.get(member.user_id) ?? null,
       };
     })
     .sort((a, b) => b.repsToday - a.repsToday);
