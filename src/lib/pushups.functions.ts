@@ -250,25 +250,8 @@ export const getStats = createServerFn({ method: "POST" })
     const targetDates = dates.filter((d) => (repsByDate[d] ?? 0) >= target);
     const targetDays = targetDates.length;
 
-    let longestStreak = 0;
-    let run = 0;
-    let previousMs: number | null = null;
-    for (const d of targetDates) {
-      const ms = Date.parse(`${d}T00:00:00Z`);
-      run = previousMs !== null && ms - previousMs === 86_400_000 ? run + 1 : 1;
-      longestStreak = Math.max(longestStreak, run);
-      previousMs = ms;
-    }
+    const streaks = computeStreaks(targetDates, data.today);
 
-    let currentStreak = 0;
-    const cursor = new Date(`${data.today}T00:00:00Z`);
-    if ((repsByDate[data.today] ?? 0) < target) cursor.setUTCDate(cursor.getUTCDate() - 1);
-    for (let i = 0; i < 400; i += 1) {
-      const key = cursor.toISOString().slice(0, 10);
-      if ((repsByDate[key] ?? 0) < target) break;
-      currentStreak += 1;
-      cursor.setUTCDate(cursor.getUTCDate() - 1);
-    }
 
     const bankedTotal = (bankRes.data ?? [])
       .filter((e) => e.kind === "deposit")
