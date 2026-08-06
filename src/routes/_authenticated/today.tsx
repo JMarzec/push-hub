@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Flame, Info, LogOut, PiggyBank, Plus, Share2, Sliders } from "lucide-react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   queryOptions,
   useMutation,
