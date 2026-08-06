@@ -221,3 +221,79 @@ export const moveBank = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { balance: data.kind === "deposit" ? balance + data.reps : balance - data.reps };
   });
+
+export const getStats = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ today: dateSchema }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const [settingsRes, logsRes, bankRes, teamRes] = await Promise.all([
+      supabase.from("user_settings").select("daily_target").eq("user_id", userId).maybeSingle(),
+      supabase.from("pushup_logs").select("reps, log_date").eq("user_id", userId),
+      supabase.from("bank_entries").select("reps, kind").eq("user_id", userId),
+      supabase.from("team_members").select("team_id").eq("user_id", userId).limit(1),
+    ]);
+    if (logsRes.error) throw new Error(logsRes.error.message);
+    if (bankRes.error) throw new Error(bankRes.error.message);
+
+    const target = settingsRes.data?.daily_target ?? 50;
+    const repsByDate: Record<string, number> = {};
+    let totalReps = 0;
+    for (const log of logsRes.data ?? []) {
+      repsByDate[log.log_date] = (repsByDate[log.log_date] ?? 0) + log.reps;
+      totalReps += log.reps;
+    }
+
+    const dates = Object.keys(repsByDate).sort();
+    const bestDay = dates.reduce((max, d) => Math.max(max, repsByDate[d] ?? 0), 0);
+    const targetDates = dates.filter((d) => (repsByDate[d] ?? 0) >= target);
+    const targetDays = targetDates.length;
+
+    let longestStreak = 0;
+    let run = 0;
+    let previousMs: number | null = null;
+    for (const d of targetDates) {
+      const ms = Date.parse(`${d}T00:00:00Z`);
+      run = previousMs !== null && ms - previousMs === 86_400_000 ? run + 1 : 1;
+      longestStreak = Math.max(longestStreak, run);
+      previousMs = ms;
+    }
+
+    let currentStreak = 0;
+    const cursor = new Date(`${data.today}T00:00:00Z`);
+    if ((repsByDate[data.today] ?? 0) < target) cursor.setUTCDate(cursor.getUTCDate() - 1);
+    for (let i = 0; i < 400; i += 1) {
+      const key = cursor.toISOString().slice(0, 10);
+      if ((repsByDate[key] ?? 0) < target) break;
+      currentStreak += 1;
+      cursor.setUTCDate(cursor.getUTCDate() - 1);
+    }
+
+    const bankedTotal = (bankRes.data ?? [])
+      .filter((e) => e.kind === "deposit")
+      .reduce((sum, e) => sum + e.reps, 0);
+
+    const weekAgo = new Date(`${data.today}T00:00:00Z`);
+    weekAgo.setUTCDate(weekAgo.getUTCDate() - 6);
+    const weekKey = weekAgo.toISOString().slice(0, 10);
+    const weekReps = dates
+      .filter((d) => d >= weekKey && d <= data.today)
+      .reduce((sum, d) => sum + (repsByDate[d] ?? 0), 0);
+
+    return {
+      dailyTarget: target,
+      totalReps,
+      bestDay,
+      daysLogged: dates.length,
+      targetDays,
+      currentStreak,
+      longestStreak: Math.max(longestStreak, currentStreak),
+      bankedTotal,
+      weekReps,
+      inTeam: (teamRes.data ?? []).length > 0,
+      recentDays: dates
+        .slice(-14)
+        .map((d) => ({ date: d, reps: repsByDate[d] ?? 0, hit: (repsByDate[d] ?? 0) >= target })),
+    };
+  });
