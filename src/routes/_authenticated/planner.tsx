@@ -75,6 +75,7 @@ function Planner() {
     void queryClient.invalidateQueries({ queryKey: ["plans"] });
     void queryClient.invalidateQueries({ queryKey: ["today"] });
     void queryClient.invalidateQueries({ queryKey: ["stats"] });
+    void queryClient.invalidateQueries({ queryKey: ["team"] });
   };
 
   const saveMutation = useMutation({

@@ -136,7 +136,10 @@ function Me() {
 
   const targetMutation = useMutation({
     mutationFn: useServerFn(updateTargetSettings),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["today"] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["today"] });
+      void queryClient.invalidateQueries({ queryKey: ["team"] });
+    },
     onError: (error: Error) => toast.error(error.message),
   });
 
