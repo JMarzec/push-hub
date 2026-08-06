@@ -13,6 +13,15 @@ export const MAX_REST_DAYS_PER_WINDOW = 1;
 export const REST_WINDOW_DAYS = 7;
 const DAY_MS = 86_400_000;
 
+export type DayStatus = "hit" | "rest" | "break" | "pending" | "none";
+
+export type StreakDay = {
+  date: string;
+  status: DayStatus;
+  /** True when this day belongs to the currently running streak. */
+  inCurrentStreak: boolean;
+};
+
 export type StreakResult = {
   current: number;
   longest: number;
@@ -22,6 +31,8 @@ export type StreakResult = {
   restDaysLeft: number;
   /** True when the streak is only alive because a rest day was forgiven. */
   onGrace: boolean;
+  /** Per-day statuses, oldest first, covering the requested timeline window. */
+  timeline: StreakDay[];
 };
 
 const toKey = (ms: number) => new Date(ms).toISOString().slice(0, 10);
@@ -33,16 +44,35 @@ const toMs = (date: string) => Date.parse(`${date}T00:00:00Z`);
 export function computeStreaks(
   hitDates: Iterable<string>,
   today: string,
-  maxLookbackDays = 730,
+  options: { maxLookbackDays?: number; timelineDays?: number } = {},
 ): StreakResult {
+  const { maxLookbackDays = 730, timelineDays = 30 } = options;
   const hits = new Set(hitDates);
+  const todayMs = toMs(today);
+
+  const emptyTimeline = (): StreakDay[] =>
+    Array.from({ length: timelineDays }, (_, i) => {
+      const ms = todayMs - (timelineDays - 1 - i) * DAY_MS;
+      return {
+        date: toKey(ms),
+        status: (ms === todayMs ? "pending" : "none") as DayStatus,
+        inCurrentStreak: false,
+      };
+    });
+
   if (hits.size === 0) {
-    return { current: 0, longest: 0, restDaysUsed: 0, restDaysLeft: MAX_REST_DAYS_PER_WINDOW, onGrace: false };
+    return {
+      current: 0,
+      longest: 0,
+      restDaysUsed: 0,
+      restDaysLeft: MAX_REST_DAYS_PER_WINDOW,
+      onGrace: false,
+      timeline: emptyTimeline(),
+    };
   }
 
   const sorted = [...hits].sort();
   const firstMs = toMs(sorted[0]!);
-  const todayMs = toMs(today);
 
   let current = 0;
   let restDaysUsed = 0;
@@ -52,6 +82,8 @@ export function computeStreaks(
   let longest = 0;
   let run = 0;
   const restWindow: number[] = []; // ms of forgiven days inside the walk
+  const statuses = new Map<number, DayStatus>();
+  const inCurrent = new Set<number>();
 
   const startMs = Math.max(firstMs, todayMs - maxLookbackDays * DAY_MS);
 
@@ -61,12 +93,19 @@ export function computeStreaks(
     if (hit) {
       run += 1;
       longest = Math.max(longest, run);
-      if (!currentDone) current = run;
+      statuses.set(ms, "hit");
+      if (!currentDone) {
+        current = run;
+        inCurrent.add(ms);
+      }
       continue;
     }
 
-    // Today (or a future-less trailing day) that isn't done yet is neutral.
-    if (ms === todayMs) continue;
+    // Today that isn't done yet is neutral.
+    if (ms === todayMs) {
+      statuses.set(ms, "pending");
+      continue;
+    }
 
     const previousMissedMs = restWindow[restWindow.length - 1];
     const consecutiveMiss = previousMissedMs === ms + DAY_MS;
@@ -77,18 +116,30 @@ export function computeStreaks(
 
     if (canForgive) {
       restWindow.push(ms);
+      statuses.set(ms, "rest");
       if (!currentDone) {
         restDaysUsed += 1;
-        onGrace = current > 0 && ms === todayMs - DAY_MS;
+        inCurrent.add(ms);
+        if (current > 0 && ms === todayMs - DAY_MS) onGrace = true;
       }
       continue;
     }
 
     // Streak broken here.
+    statuses.set(ms, "break");
     if (!currentDone) currentDone = true;
     run = 0;
     restWindow.length = 0;
   }
+
+  const timeline: StreakDay[] = Array.from({ length: timelineDays }, (_, i) => {
+    const ms = todayMs - (timelineDays - 1 - i) * DAY_MS;
+    return {
+      date: toKey(ms),
+      status: statuses.get(ms) ?? (ms === todayMs ? "pending" : "none"),
+      inCurrentStreak: inCurrent.has(ms),
+    };
+  });
 
   return {
     current,
@@ -96,5 +147,6 @@ export function computeStreaks(
     restDaysUsed,
     restDaysLeft: Math.max(0, MAX_REST_DAYS_PER_WINDOW - restDaysUsed),
     onGrace,
+    timeline,
   };
 }
