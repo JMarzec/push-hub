@@ -279,6 +279,11 @@ export const getStats = createServerFn({ method: "POST" })
       onGrace: streaks.onGrace,
       restAllowance: MAX_REST_DAYS_PER_WINDOW,
       restWindowDays: REST_WINDOW_DAYS,
+      streakTimeline: streaks.timeline.map((d) => ({
+        ...d,
+        reps: repsByDate[d.date] ?? 0,
+      })),
+
 
       bankedTotal,
       weekReps,
