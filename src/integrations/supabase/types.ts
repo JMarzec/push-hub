@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      bank_entries: {
+        Row: {
+          created_at: string
+          entry_date: string
+          id: string
+          kind: string
+          note: string | null
+          reps: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entry_date?: string
+          id?: string
+          kind: string
+          note?: string | null
+          reps: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entry_date?: string
+          id?: string
+          kind?: string
+          note?: string | null
+          reps?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -32,6 +65,84 @@ export type Database = {
           display_name?: string
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      pushup_logs: {
+        Row: {
+          created_at: string
+          id: string
+          log_date: string
+          logged_at: string
+          reps: number
+          slot: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          log_date?: string
+          logged_at?: string
+          reps: number
+          slot?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          log_date?: string
+          logged_at?: string
+          reps?: number
+          slot?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          baseline_reps: number | null
+          created_at: string
+          daily_target: number
+          disclaimer_accepted_at: string | null
+          frequency: number
+          onboarding_completed_at: string | null
+          parq_passed: boolean
+          slot_times: string[]
+          start_date: string
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          baseline_reps?: number | null
+          created_at?: string
+          daily_target?: number
+          disclaimer_accepted_at?: string | null
+          frequency?: number
+          onboarding_completed_at?: string | null
+          parq_passed?: boolean
+          slot_times?: string[]
+          start_date?: string
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          baseline_reps?: number | null
+          created_at?: string
+          daily_target?: number
+          disclaimer_accepted_at?: string | null
+          frequency?: number
+          onboarding_completed_at?: string | null
+          parq_passed?: boolean
+          slot_times?: string[]
+          start_date?: string
+          timezone?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
