@@ -21,6 +21,7 @@ import { SetChips } from "@/components/pushup/SetChips";
 import { TabBar } from "@/components/pushup/TabBar";
 import { TargetSheet } from "@/components/pushup/TargetSheet";
 import { composeSets } from "@/lib/pushup-schedule";
+import { factForDate } from "@/lib/wellbeing";
 import { createTeam, getMyTeam, renameTeam } from "@/lib/teams.functions";
 import {
   deleteLog,
