@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { Flame, Lock, Medal, PiggyBank, Trophy, Users, Zap } from "lucide-react";
+import { queryOptions, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { Flame, Lock, Medal, PiggyBank, RefreshCw, Trophy, Users, Zap } from "lucide-react";
 import { TabBar } from "@/components/pushup/TabBar";
-import { StreakTimeline } from "@/components/pushup/StreakTimeline";
+import { StreakTimeline, type TimelineDay } from "@/components/pushup/StreakTimeline";
+import { DayDetailsSheet } from "@/components/pushup/DayDetailsSheet";
 
 import { buildAchievements } from "@/lib/achievements";
 import { getStats } from "@/lib/pushups.functions";
+
 
 function localToday(): string {
   const now = new Date();
