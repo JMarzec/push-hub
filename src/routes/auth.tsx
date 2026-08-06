@@ -34,7 +34,7 @@ export const Route = createFileRoute("/auth")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: AuthPage;
+  component: AuthPage,
 });
 
 const credentialsSchema = z.object({
