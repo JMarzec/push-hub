@@ -26,7 +26,9 @@ type Props = {
   restAllowance: number;
   restWindowDays: number;
   onGrace: boolean;
+  onSelectDay?: (day: TimelineDay) => void;
 };
+
 
 const STATUS_META: Record<DayStatus, { label: string; dot: string; note: string }> = {
   hit: {
