@@ -199,19 +199,28 @@ export function StreakTimeline({
               {[...relevant].reverse().map((d) => {
                 const meta = STATUS_META[d.status];
                 return (
-                  <li key={d.date} className="flex items-start gap-3 px-3 py-2.5">
-                    <span
-                      className={`mt-1 size-2.5 shrink-0 rounded-sm ${meta.dot}`}
-                      aria-hidden="true"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-foreground tabular-nums">
-                        {shortDate(d.date)} · {d.reps}/{dailyTarget} reps
-                        {d.inCurrentStreak ? " · in current streak" : ""}
-                      </p>
-                      <p className="text-[11px] leading-snug text-muted-foreground">{meta.note}</p>
-                    </div>
+                  <li key={d.date}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectDay?.(d)}
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left"
+                    >
+                      <span
+                        className={`mt-1 size-2.5 shrink-0 rounded-sm ${meta.dot}`}
+                        aria-hidden="true"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-foreground tabular-nums">
+                          {shortDate(d.date)} · {d.reps}/{dailyTarget} reps
+                          {d.inCurrentStreak ? " · in current streak" : ""}
+                        </p>
+                        <p className="text-[11px] leading-snug text-muted-foreground">
+                          {meta.note}
+                        </p>
+                      </div>
+                    </button>
                   </li>
+
                 );
               })}
             </ul>
