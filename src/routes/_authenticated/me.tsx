@@ -122,7 +122,7 @@ function Me() {
       .split(/[\s@._-]+/)
       .filter(Boolean)
       .slice(0, 2)
-      .map((p) => p[0]?.toUpperCase() ?? "")
+      .map((p: string) => p[0]?.toUpperCase() ?? "")
       .join("") || "?";
 
   const memberSince = profile.memberSince
