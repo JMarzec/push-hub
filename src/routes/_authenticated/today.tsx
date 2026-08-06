@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Flame, Info, LogOut, PiggyBank, Plus, Share2, Sliders } from "lucide-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,9 +11,40 @@ import { DayStrip } from "@/components/pushup/DayStrip";
 import { InviteSheet } from "@/components/pushup/InviteSheet";
 import { LogSheet } from "@/components/pushup/LogSheet";
 import { ProgressRing } from "@/components/pushup/ProgressRing";
-import { SetChips, type PushupSet } from "@/components/pushup/SetChips";
+import { SetChips } from "@/components/pushup/SetChips";
 import { TabBar } from "@/components/pushup/TabBar";
 import { TargetSheet } from "@/components/pushup/TargetSheet";
+import { composeSets } from "@/lib/pushup-schedule";
+import {
+  deleteLog,
+  getToday,
+  logReps,
+  moveBank,
+  updateTargetSettings,
+} from "@/lib/pushups.functions";
+
+function localToday(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function localTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
+const todayQueryOptions = (date: string) =>
+  queryOptions({
+    queryKey: ["today", date],
+    queryFn: () => getToday({ data: { today: date, timezone: localTimezone() } }),
+    staleTime: 30_000,
+  });
 
 export const Route = createFileRoute("/_authenticated/today")({
   head: () => ({
@@ -33,60 +65,66 @@ export const Route = createFileRoute("/_authenticated/today")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
+  loader: ({ context }) => {
+    void context.queryClient.ensureQueryData(todayQueryOptions(localToday()));
+  },
   component: Today,
 });
 
-const SLOT_TIMES: Record<number, string[]> = {
-  1: ["08:00"],
-  2: ["08:00", "18:00"],
-  3: ["08:00", "13:00", "19:00"],
-  4: ["08:00", "12:00", "17:00", "21:00"],
-  6: ["07:00", "10:00", "13:00", "16:00", "19:00", "21:30"],
-};
-
-function buildSets(dailyTarget: number, frequency: number, previous: PushupSet[]): PushupSet[] {
-  const times = SLOT_TIMES[frequency] ?? SLOT_TIMES[4]!;
-  const base = Math.floor(dailyTarget / frequency);
-  let remainder = dailyTarget - base * frequency;
-  return times.map((time, i) => {
-    const extra = remainder > 0 ? 1 : 0;
-    remainder -= extra;
-    return {
-      time,
-      target: base + extra,
-      reps: previous[i]?.reps ?? 0,
-    };
-  });
-}
-
-const INITIAL_TARGET = 240;
-const INITIAL_FREQUENCY = 4;
-const INITIAL_SETS: PushupSet[] = [
-  { time: "08:00", reps: 60, target: 60 },
-  { time: "12:00", reps: 60, target: 60 },
-  { time: "17:00", reps: 0, target: 60 },
-  { time: "21:00", reps: 0, target: 60 },
-];
+const CHALLENGE_DAYS = 21;
 
 function Today() {
   const { user } = Route.useRouteContext();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [today] = useState(localToday);
 
-  const [dailyTarget, setDailyTarget] = useState(INITIAL_TARGET);
-  const [frequency, setFrequency] = useState(INITIAL_FREQUENCY);
-  const [sets, setSets] = useState<PushupSet[]>(INITIAL_SETS);
-  const [bank, setBank] = useState(0);
+  const options = todayQueryOptions(today);
+  const { data } = useSuspenseQuery(options);
+
   const [teamName, setTeamName] = useState("Morning Crew");
   const [logOpen, setLogOpen] = useState(false);
   const [bankOpen, setBankOpen] = useState(false);
   const [targetOpen, setTargetOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
 
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["today"] });
+
+  const logMutation = useMutation({
+    mutationFn: useServerFn(logReps),
+    onSuccess: invalidate,
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const undoMutation = useMutation({
+    mutationFn: useServerFn(deleteLog),
+    onSuccess: invalidate,
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const targetMutation = useMutation({
+    mutationFn: useServerFn(updateTargetSettings),
+    onSuccess: invalidate,
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const bankMutation = useMutation({
+    mutationFn: useServerFn(moveBank),
+    onSuccess: invalidate,
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const { dailyTarget, frequency, slotTimes } = data.settings;
+  const sets = composeSets(
+    dailyTarget,
+    slotTimes,
+    data.repsBySlot,
+    data.depositedToday,
+    data.withdrawnToday,
+  );
+
   const total = sets.reduce((sum, s) => sum + s.reps, 0);
   const nextSet = sets.find((s) => s.reps < s.target) ?? sets[sets.length - 1]!;
   const surplus = Math.max(total - dailyTarget, 0);
   const remainingToday = Math.max(dailyTarget - total, 0);
+  const bank = data.bank;
 
   const who =
     (user.user_metadata?.["display_name"] as string | undefined) ||
@@ -101,63 +139,46 @@ function Today() {
     void navigate({ to: "/auth", replace: true });
   }
 
-  function handleLog(reps: number, slot: string) {
-    const previousSets = sets;
+  async function handleLog(reps: number, slot: string) {
     const nextTotal = total + reps;
-    setSets((current) =>
-      current.map((s) => (s.time === slot ? { ...s, reps: s.reps + reps } : s)),
-    );
-
     const justCompleted = total < dailyTarget && nextTotal >= dailyTarget;
-    toast.success(
-      justCompleted
-        ? `You did it! ${nextTotal} of ${dailyTarget} today.`
-        : `${reps} logged. ${nextTotal} of ${dailyTarget} today.`,
-      {
-        duration: 6000,
-        action: { label: "Undo", onClick: () => setSets(previousSets) },
-      },
-    );
+    try {
+      const { id } = await logMutation.mutateAsync({ data: { reps, slot, today } });
+      toast.success(
+        justCompleted
+          ? `You did it! ${nextTotal} of ${dailyTarget} today.`
+          : `${reps} logged. ${nextTotal} of ${dailyTarget} today.`,
+        {
+          duration: 6000,
+          action: {
+            label: "Undo",
+            onClick: () => {
+              void undoMutation.mutateAsync({ data: { id } });
+            },
+          },
+        },
+      );
+    } catch {
+      // surfaced by the mutation's onError
+    }
   }
 
-  function handleSaveTarget(nextTarget: number, nextFrequency: number) {
-    setDailyTarget(nextTarget);
-    setFrequency(nextFrequency);
-    setSets((current) => buildSets(nextTarget, nextFrequency, current));
+  async function handleSaveTarget(nextTarget: number, nextFrequency: number) {
+    await targetMutation.mutateAsync({
+      data: { dailyTarget: nextTarget, frequency: nextFrequency },
+    });
     toast.success(
       `Target set: ${nextTarget} push-ups across ${nextFrequency} ${nextFrequency === 1 ? "set" : "sets"} a day.`,
     );
   }
 
-  // Move surplus reps out of today's log and into the bank, newest sets first.
-  function handleDeposit(reps: number) {
-    setSets((current) => {
-      let left = reps;
-      const next = [...current];
-      for (let i = next.length - 1; i >= 0 && left > 0; i -= 1) {
-        const take = Math.min(next[i]!.reps, left);
-        next[i] = { ...next[i]!, reps: next[i]!.reps - take };
-        left -= take;
-      }
-      return next;
-    });
-    setBank((b) => b + reps);
+  async function handleDeposit(reps: number) {
+    await bankMutation.mutateAsync({ data: { reps, kind: "deposit", today } });
     toast.success(`${reps} reps banked for a future day.`);
   }
 
-  // Spend banked reps against today's unfinished sets, earliest first.
-  function handleWithdraw(reps: number) {
-    setSets((current) => {
-      let left = reps;
-      return current.map((s) => {
-        if (left <= 0) return s;
-        const room = Math.max(s.target - s.reps, 0);
-        const give = Math.min(room, left);
-        left -= give;
-        return give > 0 ? { ...s, reps: s.reps + give } : s;
-      });
-    });
-    setBank((b) => Math.max(b - reps, 0));
+  async function handleWithdraw(reps: number) {
+    await bankMutation.mutateAsync({ data: { reps, kind: "withdrawal", today } });
     toast.success(`${reps} banked reps applied to today.`);
   }
 
@@ -169,16 +190,16 @@ function Today() {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-card/60">
               {teamName}
             </p>
-            <h1 className="mt-1 text-2xl font-bold">Day 13</h1>
+            <h1 className="mt-1 text-2xl font-bold">Day {data.dayNumber}</h1>
             <p className="mt-0.5 text-xs text-card/60">Signed in as {who}</p>
           </div>
           <div className="flex items-center gap-2">
             <span
               className="flex items-center gap-1 rounded-full bg-card/10 px-3 py-1.5 text-sm font-semibold"
-              aria-label="Current streak: 11 days"
+              aria-label={`Current streak: ${data.streak} days`}
             >
               <Flame className="size-4 text-primary" aria-hidden="true" />
-              <span aria-hidden="true">11</span>
+              <span aria-hidden="true">{data.streak}</span>
             </span>
             <button
               type="button"
@@ -210,7 +231,11 @@ function Today() {
 
       <main className="mx-auto -mt-4 w-full max-w-md flex-1 px-5 pb-8">
         <section className="rounded-3xl bg-card p-5 shadow-[var(--shadow-ring)]">
-          <DayStrip days={21} current={13} completed={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]} />
+          <DayStrip
+            days={CHALLENGE_DAYS}
+            current={Math.min(data.dayNumber, CHALLENGE_DAYS)}
+            completed={data.completedDays}
+          />
 
           <div className="mt-5 flex justify-center">
             <ProgressRing value={total} target={dailyTarget} />
@@ -282,12 +307,6 @@ function Today() {
             Regular moderate exercise is linked with better sleep quality — and better sleep is one
             of the strongest supports for day-to-day mental wellbeing.
           </p>
-          <button
-            type="button"
-            className="mt-2 text-sm font-semibold text-primary underline-offset-4 hover:underline"
-          >
-            Read more
-          </button>
         </section>
 
         <p className="mt-5 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
