@@ -4,7 +4,6 @@ import { Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
-import { supabase } from "@/integrations/supabase/client";
 import { joinTeam, previewTeamByCode } from "@/lib/teams.functions";
 
 export const Route = createFileRoute("/join/$inviteCode")({
