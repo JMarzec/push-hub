@@ -105,7 +105,10 @@ function Today() {
   const [targetOpen, setTargetOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["today"] });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["today"] });
+    void queryClient.invalidateQueries({ queryKey: ["team"] });
+  };
 
   const logMutation = useMutation({
     mutationFn: useServerFn(logReps),

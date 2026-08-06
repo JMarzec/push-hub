@@ -14,7 +14,9 @@ import { createTeam, getMyTeam, joinTeam, leaveTeam, renameTeam } from "@/lib/te
 export const teamQueryOptions = queryOptions({
   queryKey: ["team"],
   queryFn: () => getMyTeam(),
-  staleTime: 15_000,
+  staleTime: 5_000,
+  refetchOnMount: "always",
+  refetchInterval: 30_000,
 });
 
 export const Route = createFileRoute("/_authenticated/squad")({
