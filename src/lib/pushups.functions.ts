@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { slotTimesFor } from "@/lib/pushup-schedule";
+import { applyDuePlans } from "@/lib/plans-apply";
 import { computeStreaks, MAX_REST_DAYS_PER_WINDOW, REST_WINDOW_DAYS } from "@/lib/streaks";
 
 
@@ -123,6 +124,7 @@ export const getToday = createServerFn({ method: "POST" })
         parqPassed: settings.parq_passed,
         disclaimerAcceptedAt: settings.disclaimer_accepted_at,
         onboardingCompletedAt: settings.onboarding_completed_at,
+        remindersEnabled: settings.reminders_enabled,
       },
       repsBySlot,
       depositedToday,
@@ -131,6 +133,7 @@ export const getToday = createServerFn({ method: "POST" })
       streak,
       dayNumber,
       completedDays,
+      planApplied: planApplied.applied,
       todaysLogs: logs
         .filter((l) => l.log_date === data.today)
         .map((l) => ({ id: l.id, reps: l.reps, slot: l.slot, loggedAt: l.logged_at })),
@@ -365,6 +368,35 @@ export const updateLog = createServerFn({ method: "POST" })
       .from("pushup_logs")
       .update({ reps: data.reps })
       .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/**
+ * Reminder preferences: an on/off switch plus the per-set times the browser
+ * should nudge at. Times are stored as local "HH:MM" strings.
+ */
+export const updateReminderSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        enabled: z.boolean(),
+        slotTimes: z
+          .array(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Expected HH:MM"))
+          .min(1)
+          .max(6)
+          .optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const patch: Record<string, unknown> = { reminders_enabled: data.enabled };
+    if (data.slotTimes) patch["slot_times"] = data.slotTimes;
+    const { error } = await context.supabase
+      .from("user_settings")
+      .update(patch)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
