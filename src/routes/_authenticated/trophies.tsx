@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { Flame, Lock, Medal, PiggyBank, Trophy, Users, Zap } from "lucide-react";
+import { queryOptions, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { Flame, Lock, Medal, PiggyBank, RefreshCw, Trophy, Users, Zap } from "lucide-react";
 import { TabBar } from "@/components/pushup/TabBar";
-import { StreakTimeline } from "@/components/pushup/StreakTimeline";
+import { StreakTimeline, type TimelineDay } from "@/components/pushup/StreakTimeline";
+import { DayDetailsSheet } from "@/components/pushup/DayDetailsSheet";
 
 import { buildAchievements } from "@/lib/achievements";
 import { getStats } from "@/lib/pushups.functions";
+
 
 function localToday(): string {
   const now = new Date();
@@ -55,11 +57,55 @@ const ICONS = {
   zap: Zap,
 } as const;
 
+type StreakDiff = {
+  current: number;
+  longest: number;
+  restDaysLeft: number;
+  prevCurrent: number;
+  prevLongest: number;
+  prevRestDaysLeft: number;
+};
+
+const delta = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+
 function Trophies() {
   const [today] = useState(localToday);
   const { data } = useSuspenseQuery(statsQueryOptions(today));
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState<TimelineDay | null>(null);
+  const [diff, setDiff] = useState<StreakDiff | null>(null);
+  const [recalculating, setRecalculating] = useState(false);
+  const snapshot = useRef(data);
+  snapshot.current = data;
+
+  async function handleLogChanged() {
+    const before = snapshot.current;
+    setRecalculating(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ["stats"] });
+      await queryClient.invalidateQueries({ queryKey: ["today"] });
+      const after = await queryClient.fetchQuery(statsQueryOptions(today));
+      setDiff({
+        current: after.currentStreak,
+        longest: after.longestStreak,
+        restDaysLeft: after.restDaysLeft,
+        prevCurrent: before.currentStreak,
+        prevLongest: before.longestStreak,
+        prevRestDaysLeft: before.restDaysLeft,
+      });
+    } finally {
+      setRecalculating(false);
+    }
+  }
+
   const achievements = buildAchievements(data);
   const unlocked = achievements.filter((a) => a.progress >= a.goal).length;
+  const changed =
+    diff !== null &&
+    (diff.current !== diff.prevCurrent ||
+      diff.longest !== diff.prevLongest ||
+      diff.restDaysLeft !== diff.prevRestDaysLeft);
+
 
   const stats = [
     { label: "All-time reps", value: data.totalReps.toLocaleString() },
@@ -111,6 +157,56 @@ function Trophies() {
           </p>
         </section>
 
+        {recalculating || diff ? (
+          <div
+            className="mt-5 rounded-3xl bg-card p-4 shadow-[var(--shadow-ring)]"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex items-center gap-2">
+              <RefreshCw
+                className={`size-4 text-primary ${recalculating ? "animate-spin" : ""}`}
+                aria-hidden="true"
+              />
+              <p className="text-xs font-bold text-foreground">
+                {recalculating
+                  ? "Recalculating streaks…"
+                  : changed
+                    ? "Streaks updated"
+                    : "Streaks unchanged"}
+              </p>
+              {!recalculating ? (
+                <button
+                  type="button"
+                  onClick={() => setDiff(null)}
+                  className="ml-auto text-[11px] font-semibold text-muted-foreground"
+                >
+                  Dismiss
+                </button>
+              ) : null}
+            </div>
+            {!recalculating && diff ? (
+              <ul className="mt-2 space-y-1 text-[11px] text-muted-foreground tabular-nums">
+                <li>
+                  Current streak: {diff.prevCurrent}d → {diff.current}d
+                  {diff.current !== diff.prevCurrent
+                    ? ` (${delta(diff.current - diff.prevCurrent)}d)`
+                    : ""}
+                </li>
+                <li>
+                  Best streak: {diff.prevLongest}d → {diff.longest}d
+                  {diff.longest !== diff.prevLongest
+                    ? ` (${delta(diff.longest - diff.prevLongest)}d)`
+                    : ""}
+                </li>
+                <li>
+                  Rest days left: {diff.prevRestDaysLeft} → {diff.restDaysLeft}
+                </li>
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
+
         <StreakTimeline
           timeline={data.streakTimeline}
           currentStreak={data.currentStreak}
@@ -120,7 +216,19 @@ function Trophies() {
           restAllowance={data.restAllowance}
           restWindowDays={data.restWindowDays}
           onGrace={data.onGrace}
+          onSelectDay={(day) => setSelected(day)}
         />
+
+        <DayDetailsSheet
+          date={selected?.date ?? null}
+          status={selected?.status ?? "none"}
+          inCurrentStreak={selected?.inCurrentStreak ?? false}
+          onOpenChange={(open) => {
+            if (!open) setSelected(null);
+          }}
+          onChanged={handleLogChanged}
+        />
+
 
 
 

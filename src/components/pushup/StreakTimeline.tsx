@@ -26,7 +26,9 @@ type Props = {
   restAllowance: number;
   restWindowDays: number;
   onGrace: boolean;
+  onSelectDay?: (day: TimelineDay) => void;
 };
+
 
 const STATUS_META: Record<DayStatus, { label: string; dot: string; note: string }> = {
   hit: {
@@ -67,7 +69,9 @@ export function StreakTimeline({
   restAllowance,
   restWindowDays,
   onGrace,
+  onSelectDay,
 }: Props) {
+
   const [showBreakdown, setShowBreakdown] = useState(false);
   const relevant = timeline.filter((d) => d.status !== "none");
   const counted = relevant.filter((d) => d.status === "hit");
@@ -133,15 +137,18 @@ export function StreakTimeline({
           const meta = STATUS_META[d.status];
           return (
             <li key={d.date}>
-              <div
-                className={`h-7 rounded-md ${meta.dot} ${
+              <button
+                type="button"
+                onClick={() => onSelectDay?.(d)}
+                className={`h-7 w-full rounded-md ${meta.dot} ${
                   d.inCurrentStreak ? "outline outline-2 outline-offset-1 outline-primary/50" : ""
                 }`}
                 title={`${d.date} · ${d.reps} reps · ${meta.label}`}
               >
                 <span className="sr-only">{`${d.date}: ${d.reps} reps, ${meta.label}`}</span>
-              </div>
+              </button>
             </li>
+
           );
         })}
       </ol>
@@ -192,19 +199,28 @@ export function StreakTimeline({
               {[...relevant].reverse().map((d) => {
                 const meta = STATUS_META[d.status];
                 return (
-                  <li key={d.date} className="flex items-start gap-3 px-3 py-2.5">
-                    <span
-                      className={`mt-1 size-2.5 shrink-0 rounded-sm ${meta.dot}`}
-                      aria-hidden="true"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-foreground tabular-nums">
-                        {shortDate(d.date)} · {d.reps}/{dailyTarget} reps
-                        {d.inCurrentStreak ? " · in current streak" : ""}
-                      </p>
-                      <p className="text-[11px] leading-snug text-muted-foreground">{meta.note}</p>
-                    </div>
+                  <li key={d.date}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectDay?.(d)}
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left"
+                    >
+                      <span
+                        className={`mt-1 size-2.5 shrink-0 rounded-sm ${meta.dot}`}
+                        aria-hidden="true"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-foreground tabular-nums">
+                          {shortDate(d.date)} · {d.reps}/{dailyTarget} reps
+                          {d.inCurrentStreak ? " · in current streak" : ""}
+                        </p>
+                        <p className="text-[11px] leading-snug text-muted-foreground">
+                          {meta.note}
+                        </p>
+                      </div>
+                    </button>
                   </li>
+
                 );
               })}
             </ul>

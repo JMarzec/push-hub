@@ -293,3 +293,42 @@ export const getStats = createServerFn({ method: "POST" })
         .map((d) => ({ date: d, reps: repsByDate[d] ?? 0, hit: (repsByDate[d] ?? 0) >= target })),
     };
   });
+
+export const getDayLogs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ date: dateSchema }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const [settingsRes, logsRes] = await Promise.all([
+      supabase.from("user_settings").select("daily_target").eq("user_id", userId).maybeSingle(),
+      supabase
+        .from("pushup_logs")
+        .select("id, reps, slot, logged_at")
+        .eq("user_id", userId)
+        .eq("log_date", data.date)
+        .order("logged_at", { ascending: true }),
+    ]);
+    if (logsRes.error) throw new Error(logsRes.error.message);
+    const logs = logsRes.data ?? [];
+    return {
+      date: data.date,
+      dailyTarget: settingsRes.data?.daily_target ?? 50,
+      totalReps: logs.reduce((sum, l) => sum + l.reps, 0),
+      logs: logs.map((l) => ({ id: l.id, reps: l.reps, slot: l.slot, loggedAt: l.logged_at })),
+    };
+  });
+
+export const updateLog = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ id: z.string().uuid(), reps: z.number().int().min(1).max(500) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("pushup_logs")
+      .update({ reps: data.reps })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
