@@ -35,6 +35,19 @@ export const getToday = createServerFn({ method: "POST" })
       settings = inserted.data;
     }
 
+    // Scheduled goal-plan changes take effect the first time the day is opened.
+    const planApplied = await applyDuePlans(supabase, userId, data.today);
+    if (planApplied.applied) {
+      const refreshed = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (refreshed.data) settings = refreshed.data;
+    }
+
+
+
     const since = new Date(`${data.today}T00:00:00Z`);
     since.setUTCDate(since.getUTCDate() - 60);
     const sinceDate = since.toISOString().slice(0, 10);
