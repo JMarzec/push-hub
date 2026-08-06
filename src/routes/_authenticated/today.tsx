@@ -198,15 +198,32 @@ function Today() {
     );
   }
 
+  function bankUndoToast(message: string, entryId: string) {
+    toast.success(message, {
+      duration: 6000,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          void undoBankMutation.mutateAsync({ data: { entryId } });
+        },
+      },
+    });
+  }
+
   async function handleDeposit(reps: number) {
-    await bankMutation.mutateAsync({ data: { reps, kind: "deposit", today } });
-    toast.success(`${reps} reps banked for a future day.`);
+    const { entryId } = await bankMutation.mutateAsync({
+      data: { reps, kind: "deposit", today },
+    });
+    bankUndoToast(`${reps} reps banked for a future day.`, entryId);
   }
 
   async function handleWithdraw(reps: number) {
-    await bankMutation.mutateAsync({ data: { reps, kind: "withdrawal", today } });
-    toast.success(`${reps} banked reps applied to today.`);
+    const { entryId } = await bankMutation.mutateAsync({
+      data: { reps, kind: "withdrawal", today },
+    });
+    bankUndoToast(`${reps} banked reps applied to today.`, entryId);
   }
+
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
