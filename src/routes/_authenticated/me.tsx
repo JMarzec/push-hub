@@ -300,11 +300,11 @@ function Me() {
             {dailyTarget} push-ups across {frequency} {frequency === 1 ? "set" : "sets"} a day ·{" "}
             {Math.ceil(dailyTarget / frequency)} per set
           </p>
-          {todayData?.settings.targetSource === "squad" ? (
+          {settingsQuery.data?.settings.targetSource === "squad" ? (
             <>
               <p className="mt-1 text-sm font-semibold text-primary">
                 Coming from your squad target
-                {settingsQuery.data.settings.squadName ? ` (${settingsQuery.data.settings.squadName})` : ""}.
+                {settingsQuery.data?.settings.squadName ? ` (${settingsQuery.data.settings.squadName})` : ""}.
               </p>
               <Button
                 variant="outline"
