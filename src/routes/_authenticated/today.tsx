@@ -363,6 +363,8 @@ function Today() {
         open={bankOpen}
         onOpenChange={setBankOpen}
         surplus={surplus}
+        loggedToday={total}
+
         bank={bank}
         remainingToday={remainingToday}
         onDeposit={handleDeposit}

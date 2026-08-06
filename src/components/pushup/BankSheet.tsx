@@ -15,6 +15,7 @@ interface BankSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   surplus: number;
+  loggedToday: number;
   bank: number;
   remainingToday: number;
   onDeposit: (reps: number) => void;
@@ -25,29 +26,39 @@ export function BankSheet({
   open,
   onOpenChange,
   surplus,
+  loggedToday,
   bank,
   remainingToday,
   onDeposit,
   onWithdraw,
 }: BankSheetProps) {
   const [mode, setMode] = useState<"deposit" | "withdraw">("deposit");
-  const max = mode === "deposit" ? surplus : Math.min(bank, remainingToday);
+  // You can bank anything you've already logged today: reps past the target are
+  // pure surplus, and reps below it move off today's ring into the bank.
+  const depositMax = loggedToday;
+  const withdrawMax = Math.min(bank, remainingToday);
+  const max = mode === "deposit" ? depositMax : withdrawMax;
   const [amount, setAmount] = useState(0);
   const value = Math.min(amount, max);
+
+  const defaultFor = (m: "deposit" | "withdraw") =>
+    m === "deposit" ? (surplus > 0 ? surplus : depositMax) : withdrawMax;
 
   // Pre-fill with everything available each time the sheet opens, so one tap
   // banks the whole surplus (the parent controls `open`, not a Radix trigger).
   useEffect(() => {
     if (!open) return;
-    const startMode = surplus > 0 ? "deposit" : "withdraw";
+    const startMode = depositMax > 0 ? "deposit" : "withdraw";
     setMode(startMode);
-    setAmount(startMode === "deposit" ? surplus : Math.min(bank, remainingToday));
-  }, [open, surplus, bank, remainingToday]);
+    setAmount(defaultFor(startMode));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, surplus, depositMax, withdrawMax]);
 
   function switchMode(next: "deposit" | "withdraw") {
     setMode(next);
-    setAmount(next === "deposit" ? surplus : Math.min(bank, remainingToday));
+    setAmount(defaultFor(next));
   }
+
 
   function submit() {
     if (value <= 0) return;
@@ -101,14 +112,17 @@ export function BankSheet({
         <p className="mt-4 text-sm text-muted-foreground">
           {mode === "deposit"
             ? surplus > 0
-              ? `You're ${surplus} reps past today's target — bank up to ${surplus}.`
-              : "Nothing to bank yet. Finish today's target first, then extra reps become bankable."
+              ? `You're ${surplus} reps past today's target — bank up to ${surplus}, or up to ${depositMax} of everything you've logged today.`
+              : depositMax > 0
+                ? `You've logged ${depositMax} reps today. Banking them saves the reps for a future day and takes them off today's ring.`
+                : "Nothing to bank yet — log some reps first, then you can save them for a future day."
             : bank > 0
               ? remainingToday > 0
                 ? `You can spend up to ${max} banked reps on today's remaining ${remainingToday}.`
                 : "Today's target is already met — no need to spend banked reps."
               : "Your bank is empty. Log extra reps on a strong day to build it up."}
         </p>
+
 
         <div className="mt-6 text-center">
           <span className="text-5xl font-extrabold tabular-nums text-foreground">{value}</span>
