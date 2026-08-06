@@ -112,14 +112,17 @@ export function BankSheet({
         <p className="mt-4 text-sm text-muted-foreground">
           {mode === "deposit"
             ? surplus > 0
-              ? `You're ${surplus} reps past today's target — bank up to ${surplus}.`
-              : "Nothing to bank yet. Finish today's target first, then extra reps become bankable."
+              ? `You're ${surplus} reps past today's target — bank up to ${surplus}, or up to ${depositMax} of everything you've logged today.`
+              : depositMax > 0
+                ? `You've logged ${depositMax} reps today. Banking them saves the reps for a future day and takes them off today's ring.`
+                : "Nothing to bank yet — log some reps first, then you can save them for a future day."
             : bank > 0
               ? remainingToday > 0
                 ? `You can spend up to ${max} banked reps on today's remaining ${remainingToday}.`
                 : "Today's target is already met — no need to spend banked reps."
               : "Your bank is empty. Log extra reps on a strong day to build it up."}
         </p>
+
 
         <div className="mt-6 text-center">
           <span className="text-5xl font-extrabold tabular-nums text-foreground">{value}</span>
