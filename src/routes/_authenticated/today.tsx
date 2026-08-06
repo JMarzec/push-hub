@@ -145,6 +145,7 @@ function Today() {
   );
 
   const total = sets.reduce((sum, s) => sum + s.reps, 0);
+  const todaysFact = factForDate(data.settings.startDate, today);
   const nextSet = sets.find((s) => s.reps < s.target) ?? sets[sets.length - 1]!;
   const surplus = Math.max(total - dailyTarget, 0);
   const remainingToday = Math.max(dailyTarget - total, 0);
