@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedSquadRouteImport } from './routes/_authenticated/squad'
 import { Route as AuthenticatedTodayRouteImport } from './routes/_authenticated/today'
+import { Route as AuthenticatedTrophiesRouteImport } from './routes/_authenticated/trophies'
 import { Route as JoinInviteCodeRouteImport } from './routes/join.$inviteCode'
 
 const IndexRoute = IndexRouteImport.update({
@@ -40,6 +41,11 @@ const AuthenticatedTodayRoute = AuthenticatedTodayRouteImport.update({
   path: '/today',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTrophiesRoute = AuthenticatedTrophiesRouteImport.update({
+  id: '/trophies',
+  path: '/trophies',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const JoinInviteCodeRoute = JoinInviteCodeRouteImport.update({
   id: '/join/$inviteCode',
   path: '/join/$inviteCode',
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/squad': typeof AuthenticatedSquadRoute
   '/today': typeof AuthenticatedTodayRoute
+  '/trophies': typeof AuthenticatedTrophiesRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
 }
 export interface FileRoutesByTo {
@@ -58,6 +65,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/squad': typeof AuthenticatedSquadRoute
   '/today': typeof AuthenticatedTodayRoute
+  '/trophies': typeof AuthenticatedTrophiesRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
 }
 export interface FileRoutesById {
@@ -67,13 +75,15 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/squad': typeof AuthenticatedSquadRoute
   '/_authenticated/today': typeof AuthenticatedTodayRoute
+  '/_authenticated/trophies': typeof AuthenticatedTrophiesRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/squad' | '/today' | '/join/$inviteCode'
+  fullPaths:
+    '/' | '/auth' | '/squad' | '/today' | '/trophies' | '/join/$inviteCode'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/squad' | '/today' | '/join/$inviteCode'
+  to: '/' | '/auth' | '/squad' | '/today' | '/trophies' | '/join/$inviteCode'
   id:
     | '__root__'
     | '/'
@@ -81,6 +91,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/squad'
     | '/_authenticated/today'
+    | '/_authenticated/trophies'
     | '/join/$inviteCode'
   fileRoutesById: FileRoutesById
 }
@@ -128,6 +139,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTodayRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/trophies': {
+      id: '/_authenticated/trophies'
+      path: '/trophies'
+      fullPath: '/trophies'
+      preLoaderRoute: typeof AuthenticatedTrophiesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/join/$inviteCode': {
       id: '/join/$inviteCode'
       path: '/join/$inviteCode'
@@ -141,11 +159,13 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSquadRoute: typeof AuthenticatedSquadRoute
   AuthenticatedTodayRoute: typeof AuthenticatedTodayRoute
+  AuthenticatedTrophiesRoute: typeof AuthenticatedTrophiesRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSquadRoute: AuthenticatedSquadRoute,
   AuthenticatedTodayRoute: AuthenticatedTodayRoute,
+  AuthenticatedTrophiesRoute: AuthenticatedTrophiesRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
