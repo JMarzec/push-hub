@@ -305,6 +305,22 @@ function Squad() {
                           <Crown className="size-3.5 text-primary" aria-label="Team owner" />
                         ) : null}
                       </p>
+                      <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className="font-semibold tabular-nums text-foreground">
+                          {m.dailyTarget}
+                        </span>
+                        <span>reps target</span>
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                            m.followsShared
+                              ? "bg-primary/15 text-primary"
+                              : "bg-secondary text-muted-foreground"
+                          }`}
+                        >
+                          {m.followsShared ? "Squad target" : "Personal"}
+                        </span>
+                      </p>
+
                       <div
                         className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary"
                         role="progressbar"
