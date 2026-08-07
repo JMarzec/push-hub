@@ -98,11 +98,18 @@ function ConversionsScreen() {
     const label = newLabel.trim();
     const step = Number(newStep);
     const perStep = Number(newValue);
-    if (!label) return toast.error("Give the activity a name.");
-    if (!(step > 0) || !(perStep > 0)) return toast.error("Amounts must be greater than zero.");
+    if (!label) {
+      toast.error("Give the activity a name.");
+      return;
+    }
+    if (!(step > 0) || !(perStep > 0)) {
+      toast.error("Amounts must be greater than zero.");
+      return;
+    }
     const key = slugify(label);
     if (conversions.some((c) => c.activityKey === key)) {
-      return toast.error("You already have an activity with that name.");
+      toast.error("You already have an activity with that name.");
+      return;
     }
     await saveMutation.mutateAsync({
       data: {
