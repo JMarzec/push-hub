@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_conversions: {
+        Row: {
+          activity_key: string
+          created_at: string
+          enabled: boolean
+          id: string
+          is_custom: boolean
+          label: string
+          pushups_per_unit: number
+          unit: string
+          unit_step: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_key: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          is_custom?: boolean
+          label: string
+          pushups_per_unit?: number
+          unit: string
+          unit_step?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_key?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          is_custom?: boolean
+          label?: string
+          pushups_per_unit?: number
+          unit?: string
+          unit_step?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       bank_entries: {
         Row: {
           created_at: string
@@ -73,6 +115,10 @@ export type Database = {
       }
       pushup_logs: {
         Row: {
+          activity_amount: number | null
+          activity_key: string | null
+          activity_label: string | null
+          activity_unit: string | null
           created_at: string
           id: string
           log_date: string
@@ -83,6 +129,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          activity_amount?: number | null
+          activity_key?: string | null
+          activity_label?: string | null
+          activity_unit?: string | null
           created_at?: string
           id?: string
           log_date?: string
@@ -93,6 +143,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          activity_amount?: number | null
+          activity_key?: string | null
+          activity_label?: string | null
+          activity_unit?: string | null
           created_at?: string
           id?: string
           log_date?: string
