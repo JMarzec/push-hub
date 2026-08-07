@@ -82,7 +82,7 @@ export const getToday = createServerFn({ method: "POST" })
     const [logsRes, bankRes] = await Promise.all([
       supabase
         .from("pushup_logs")
-        .select("id, reps, slot, log_date, logged_at")
+        .select("id, reps, slot, log_date, logged_at, activity_label, activity_amount, activity_unit")
         .eq("user_id", userId)
         .gte("log_date", sinceDate)
         .order("logged_at", { ascending: true }),
@@ -164,7 +164,15 @@ export const getToday = createServerFn({ method: "POST" })
       planApplied: planApplied.applied !== null,
       todaysLogs: logs
         .filter((l) => l.log_date === data.today)
-        .map((l) => ({ id: l.id, reps: l.reps, slot: l.slot, loggedAt: l.logged_at })),
+        .map((l) => ({
+          id: l.id,
+          reps: l.reps,
+          slot: l.slot,
+          loggedAt: l.logged_at,
+          activityLabel: l.activity_label,
+          activityAmount: l.activity_amount === null ? null : Number(l.activity_amount),
+          activityUnit: l.activity_unit,
+        })),
     };
   });
 
@@ -176,6 +184,11 @@ export const logReps = createServerFn({ method: "POST" })
         reps: z.number().int().min(1).max(500),
         slot: z.string().max(10).nullable().optional(),
         today: dateSchema,
+        // Set when the reps came from a converted activity (swim, run, squats…).
+        activityKey: z.string().max(40).nullable().optional(),
+        activityLabel: z.string().max(40).nullable().optional(),
+        activityAmount: z.number().positive().max(1_000_000).nullable().optional(),
+        activityUnit: z.enum(["m", "km", "reps", "min"]).nullable().optional(),
       })
       .parse(input),
   )
@@ -187,12 +200,17 @@ export const logReps = createServerFn({ method: "POST" })
         reps: data.reps,
         slot: data.slot ?? null,
         log_date: data.today,
+        activity_key: data.activityKey ?? null,
+        activity_label: data.activityLabel ?? null,
+        activity_amount: data.activityAmount ?? null,
+        activity_unit: data.activityUnit ?? null,
       })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
     return { id: row.id };
   });
+
 
 export const deleteLog = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -371,7 +389,7 @@ export const getDayLogs = createServerFn({ method: "POST" })
       supabase.from("user_settings").select("daily_target").eq("user_id", userId).maybeSingle(),
       supabase
         .from("pushup_logs")
-        .select("id, reps, slot, logged_at")
+        .select("id, reps, slot, logged_at, activity_label, activity_amount, activity_unit")
         .eq("user_id", userId)
         .eq("log_date", data.date)
         .order("logged_at", { ascending: true }),
@@ -382,7 +400,15 @@ export const getDayLogs = createServerFn({ method: "POST" })
       date: data.date,
       dailyTarget: settingsRes.data?.daily_target ?? 50,
       totalReps: logs.reduce((sum, l) => sum + l.reps, 0),
-      logs: logs.map((l) => ({ id: l.id, reps: l.reps, slot: l.slot, loggedAt: l.logged_at })),
+      logs: logs.map((l) => ({
+          id: l.id,
+          reps: l.reps,
+          slot: l.slot,
+          loggedAt: l.logged_at,
+          activityLabel: l.activity_label,
+          activityAmount: l.activity_amount === null ? null : Number(l.activity_amount),
+          activityUnit: l.activity_unit,
+        })),
     };
   });
 

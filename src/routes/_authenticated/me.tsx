@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Bell, CalendarClock, Flame, Info, LogOut, Sliders, Trophy, User, Users, Wrench } from "lucide-react";
+import { Bell, CalendarClock, Flame, Info, LogOut, Repeat, Sliders, Trophy, User, Users, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -369,6 +369,25 @@ function Me() {
             </Link>
           </Button>
         </section>
+
+        <section
+          className="mt-4 rounded-2xl border border-border bg-card p-4"
+          aria-labelledby="conversions-heading"
+        >
+          <h2 id="conversions-heading" className="text-sm font-bold text-foreground">
+            Activity conversions
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Count swims, runs, squats and your own activities as push-up equivalents.
+          </p>
+          <Button asChild variant="outline" className="mt-3 h-11 w-full rounded-full font-bold">
+            <Link to="/conversions">
+              <Repeat className="size-5" aria-hidden="true" />
+              Set conversion rates
+            </Link>
+          </Button>
+        </section>
+
 
         <section className="mt-4 rounded-2xl border border-border bg-card p-4" aria-labelledby="squad-heading">
           <h2 id="squad-heading" className="text-sm font-bold text-foreground">

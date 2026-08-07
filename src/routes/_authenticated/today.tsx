@@ -24,6 +24,8 @@ import { useReminders } from "@/hooks/useReminders";
 import { composeSets } from "@/lib/pushup-schedule";
 import { factForDate } from "@/lib/wellbeing";
 import { createTeam, getMyTeam, renameTeam } from "@/lib/teams.functions";
+import { listConversions } from "@/lib/conversions.functions";
+import type { ActivityLog } from "@/components/pushup/LogSheet";
 import {
   deleteLog,
   getToday,
@@ -99,6 +101,12 @@ function Today() {
     staleTime: 15_000,
   });
   const team = teamQuery.data?.team ?? null;
+  const conversionsQuery = useQuery({
+    queryKey: ["conversions"],
+    queryFn: () => listConversions(),
+    staleTime: 60_000,
+  });
+  const conversions = conversionsQuery.data?.conversions ?? [];
   const teamName = team?.name ?? "Solo challenge";
   const [logOpen, setLogOpen] = useState(false);
   const [bankOpen, setBankOpen] = useState(false);
@@ -199,6 +207,37 @@ function Today() {
         justCompleted
           ? `You did it! ${nextTotal} of ${dailyTarget} today.`
           : `${reps} logged. ${nextTotal} of ${dailyTarget} today.`,
+        {
+          duration: 6000,
+          action: {
+            label: "Undo",
+            onClick: () => {
+              void undoMutation.mutateAsync({ data: { id } });
+            },
+          },
+        },
+      );
+    } catch {
+      // surfaced by the mutation's onError
+    }
+  }
+
+  async function handleLogActivity(entry: ActivityLog) {
+    const nextTotal = total + entry.reps;
+    try {
+      const { id } = await logMutation.mutateAsync({
+        data: {
+          reps: entry.reps,
+          slot: entry.slot,
+          today,
+          activityKey: entry.activityKey,
+          activityLabel: entry.activityLabel,
+          activityAmount: entry.activityAmount,
+          activityUnit: entry.activityUnit,
+        },
+      });
+      toast.success(
+        `${entry.activityAmount} ${entry.activityUnit} of ${entry.activityLabel} = ${entry.reps} push-ups. ${nextTotal} of ${dailyTarget} today.`,
         {
           duration: 6000,
           action: {
@@ -415,6 +454,8 @@ function Today() {
         sets={sets}
         defaultSlot={nextSet.time}
         onLog={handleLog}
+        conversions={conversions}
+        onLogActivity={handleLogActivity}
       />
 
       <BankSheet
