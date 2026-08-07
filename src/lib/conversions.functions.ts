@@ -66,7 +66,31 @@ export const listConversions = createServerFn({ method: "POST" })
       return { conversions: (seeded.data as ConversionRow[]).map(toRate) };
     }
 
-    return { conversions: (data as ConversionRow[]).map(toRate) };
+    const rows = data as ConversionRow[];
+    // Backfill any built-in activity added after this user was first seeded.
+    const existing = new Set(rows.map((r) => r.activity_key));
+    const missing = DEFAULT_CONVERSIONS.filter((c) => !existing.has(c.activityKey));
+    if (missing.length > 0) {
+      const added = await supabase
+        .from("activity_conversions")
+        .insert(
+          missing.map((c) => ({
+            user_id: userId,
+            activity_key: c.activityKey,
+            label: c.label,
+            unit: c.unit,
+            unit_step: c.unitStep,
+            pushups_per_unit: c.pushupsPerUnit,
+            is_custom: false,
+            enabled: true,
+          })),
+        )
+        .select("id, activity_key, label, unit, unit_step, pushups_per_unit, is_custom, enabled");
+      if (added.error) throw new Error(added.error.message);
+      return { conversions: [...rows, ...(added.data as ConversionRow[])].map(toRate) };
+    }
+
+    return { conversions: rows.map(toRate) };
   });
 
 export const saveConversion = createServerFn({ method: "POST" })

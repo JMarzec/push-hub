@@ -66,6 +66,15 @@ export const DEFAULT_CONVERSIONS: Omit<ConversionRate, "id">[] = [
     enabled: true,
   },
   {
+    activityKey: "crunches",
+    label: "Crunches",
+    unit: "reps",
+    unitStep: 1,
+    pushupsPerUnit: 1,
+    isCustom: false,
+    enabled: true,
+  },
+  {
     activityKey: "burpees",
     label: "Burpees",
     unit: "reps",
