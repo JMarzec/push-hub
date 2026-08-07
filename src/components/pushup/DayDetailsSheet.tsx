@@ -164,9 +164,14 @@ export function DayDetailsSheet({ date, status, inCurrentStreak, onOpenChange, o
                           {log.reps} reps
                         </p>
                         <p className="text-[11px] text-muted-foreground">
-                          {log.slot ? `Slot ${log.slot}` : "Unassigned set"}
+                          {log.activityLabel && log.activityAmount
+                            ? `${log.activityAmount} ${log.activityUnit} ${log.activityLabel} · converted`
+                            : log.slot
+                              ? `Slot ${log.slot}`
+                              : "Unassigned set"}
                         </p>
                       </div>
+
                       <Button
                         variant="ghost"
                         size="sm"
