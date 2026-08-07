@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Bell, CalendarClock, Flame, Info, LogOut, Sliders, Trophy, User, Users, Wrench } from "lucide-react";
+import { Bell, CalendarClock, Flame, Info, LogOut, Repeat, Sliders, Trophy, User, Users, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
