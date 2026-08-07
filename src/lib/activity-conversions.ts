@@ -98,8 +98,8 @@ export function convertToPushups(amount: number, rate: ConversionRate): number {
 export function describeRate(rate: ConversionRate): string {
   const perStep = rate.unitStep * rate.pushupsPerUnit;
   const rounded = Number.isInteger(perStep) ? perStep : Number(perStep.toFixed(1));
-  const step = rate.unitStep === 1 ? "" : `${rate.unitStep} `;
-  return `${step}${UNIT_LABELS[rate.unit]} = ${rounded} push-ups`;
+  return `${rate.unitStep} ${UNIT_LABELS[rate.unit]} = ${rounded} push-ups`;
+
 }
 
 /** Turn the per-chunk value a user types into the stored per-unit rate. */
