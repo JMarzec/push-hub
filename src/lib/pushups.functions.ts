@@ -176,6 +176,11 @@ export const logReps = createServerFn({ method: "POST" })
         reps: z.number().int().min(1).max(500),
         slot: z.string().max(10).nullable().optional(),
         today: dateSchema,
+        // Set when the reps came from a converted activity (swim, run, squats…).
+        activityKey: z.string().max(40).nullable().optional(),
+        activityLabel: z.string().max(40).nullable().optional(),
+        activityAmount: z.number().positive().max(1_000_000).nullable().optional(),
+        activityUnit: z.enum(["m", "km", "reps", "min"]).nullable().optional(),
       })
       .parse(input),
   )
@@ -187,12 +192,17 @@ export const logReps = createServerFn({ method: "POST" })
         reps: data.reps,
         slot: data.slot ?? null,
         log_date: data.today,
+        activity_key: data.activityKey ?? null,
+        activity_label: data.activityLabel ?? null,
+        activity_amount: data.activityAmount ?? null,
+        activity_unit: data.activityUnit ?? null,
       })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
     return { id: row.id };
   });
+
 
 export const deleteLog = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
