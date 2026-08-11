@@ -39,6 +39,11 @@ const STATUS_COPY: Record<DayStatus, { label: string; note: string; className: s
     note: "This day is outside your logging history.",
     className: "bg-secondary text-muted-foreground",
   },
+  recovery: {
+    label: "Recovery day",
+    note: "Your planned weekly day off — no target, and your streak keeps running.",
+    className: "bg-accent text-accent-foreground",
+  },
 };
 
 type Props = {
