@@ -65,7 +65,10 @@ export async function fetchTeamStats(
 
   const [profiles, settings, logs] = await Promise.all([
     supabaseAdmin.from("profiles").select("id, display_name, avatar_url").in("id", memberIds),
-    supabaseAdmin.from("user_settings").select("user_id, daily_target").in("user_id", memberIds),
+    supabaseAdmin
+      .from("user_settings")
+      .select("user_id, daily_target, rest_day_of_week")
+      .in("user_id", memberIds),
     supabaseAdmin.from("pushup_logs").select("user_id, reps, log_date").in("user_id", memberIds),
   ]);
   if (profiles.error) throw new Error(profiles.error.message);
