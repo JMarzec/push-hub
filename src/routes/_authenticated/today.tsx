@@ -496,6 +496,7 @@ function Today() {
         onOpenChange={setTargetOpen}
         dailyTarget={dailyTarget}
         frequency={frequency}
+        restDayOfWeek={data.settings.restDayOfWeek}
         onSave={handleSaveTarget}
       />
 
