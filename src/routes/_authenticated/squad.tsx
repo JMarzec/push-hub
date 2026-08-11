@@ -306,20 +306,32 @@ function Squad() {
                         ) : null}
                       </p>
                       <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <span className="font-semibold tabular-nums text-foreground">
-                          {m.dailyTarget}
-                        </span>
-                        <span>reps target</span>
-                        <span
-                          className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                            m.followsShared
-                              ? "bg-primary/15 text-primary"
-                              : "bg-secondary text-muted-foreground"
-                          }`}
-                        >
-                          {m.followsShared ? "Squad target" : "Personal"}
-                        </span>
+                        {m.onRecoveryDay ? (
+                          <>
+                            <span>resting today</span>
+                            <span className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-accent-foreground">
+                              Recovery day
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-semibold tabular-nums text-foreground">
+                              {m.dailyTarget}
+                            </span>
+                            <span>reps target</span>
+                            <span
+                              className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                                m.followsShared
+                                  ? "bg-primary/15 text-primary"
+                                  : "bg-secondary text-muted-foreground"
+                              }`}
+                            >
+                              {m.followsShared ? "Squad target" : "Personal"}
+                            </span>
+                          </>
+                        )}
                       </p>
+
 
                       <div
                         className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary"

@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TabBar } from "@/components/pushup/TabBar";
 import { TargetSheet } from "@/components/pushup/TargetSheet";
+import { WEEKDAY_LABELS } from "@/lib/streaks";
 import { AvatarPicker } from "@/components/pushup/AvatarPicker";
 import { ReminderSheet } from "@/components/pushup/ReminderSheet";
 import { useReminders } from "@/hooks/useReminders";
@@ -300,6 +301,12 @@ function Me() {
             {dailyTarget} push-ups across {frequency} {frequency === 1 ? "set" : "sets"} a day ·{" "}
             {Math.ceil(dailyTarget / frequency)} per set
           </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {settingsQuery.data?.settings.restDayOfWeek === null ||
+            settingsQuery.data?.settings.restDayOfWeek === undefined
+              ? "No weekly recovery day set."
+              : `Recovery day: every ${WEEKDAY_LABELS[settingsQuery.data.settings.restDayOfWeek]}.`}
+          </p>
           {settingsQuery.data?.settings.targetSource === "squad" ? (
             <>
               <p className="mt-1 text-sm font-semibold text-primary">
@@ -439,12 +446,19 @@ function Me() {
         onOpenChange={setTargetOpen}
         dailyTarget={dailyTarget}
         frequency={frequency}
-        onSave={(nextTarget, nextFrequency) => {
+        restDayOfWeek={settingsQuery.data?.settings.restDayOfWeek ?? null}
+        onSave={(nextTarget, nextFrequency, nextRestDay) => {
           targetMutation.mutate({
-            data: { dailyTarget: nextTarget, frequency: nextFrequency },
+            data: {
+              dailyTarget: nextTarget,
+              frequency: nextFrequency,
+              restDayOfWeek: nextRestDay,
+            },
           });
           toast.success(
-            `Target set: ${nextTarget} push-ups across ${nextFrequency} ${nextFrequency === 1 ? "set" : "sets"} a day.`,
+            `Target set: ${nextTarget} push-ups across ${nextFrequency} ${nextFrequency === 1 ? "set" : "sets"} a day${
+              nextRestDay === null ? "" : `, ${WEEKDAY_LABELS[nextRestDay]}s off`
+            }.`,
           );
         }}
       />

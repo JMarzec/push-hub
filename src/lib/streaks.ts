@@ -13,7 +13,23 @@ export const MAX_REST_DAYS_PER_WINDOW = 1;
 export const REST_WINDOW_DAYS = 7;
 const DAY_MS = 86_400_000;
 
-export type DayStatus = "hit" | "rest" | "break" | "pending" | "none";
+export type DayStatus = "hit" | "rest" | "break" | "pending" | "none" | "recovery";
+
+/** Day-of-week helper: 0 = Sunday … 6 = Saturday, matching Date#getUTCDay. */
+export const WEEKDAY_LABELS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const;
+
+export function isRecoveryDate(date: string, restDayOfWeek: number | null | undefined): boolean {
+  if (restDayOfWeek === null || restDayOfWeek === undefined) return false;
+  return new Date(`${date}T00:00:00Z`).getUTCDay() === restDayOfWeek;
+}
 
 export type StreakDay = {
   date: string;
@@ -44,9 +60,16 @@ const toMs = (date: string) => Date.parse(`${date}T00:00:00Z`);
 export function computeStreaks(
   hitDates: Iterable<string>,
   today: string,
-  options: { maxLookbackDays?: number; timelineDays?: number } = {},
+  options: {
+    maxLookbackDays?: number;
+    timelineDays?: number;
+    /** 0 = Sunday … 6 = Saturday. That weekday never counts as a miss. */
+    restDayOfWeek?: number | null;
+  } = {},
 ): StreakResult {
-  const { maxLookbackDays = 730, timelineDays = 30 } = options;
+  const { maxLookbackDays = 730, timelineDays = 30, restDayOfWeek = null } = options;
+  const isRecovery = (ms: number) =>
+    restDayOfWeek !== null && new Date(ms).getUTCDay() === restDayOfWeek;
   const hits = new Set(hitDates);
   const todayMs = toMs(today);
 
@@ -103,9 +126,18 @@ export function computeStreaks(
 
     // Today that isn't done yet is neutral.
     if (ms === todayMs) {
-      statuses.set(ms, "pending");
+      statuses.set(ms, isRecovery(ms) ? "recovery" : "pending");
       continue;
     }
+
+    // The chosen weekly recovery day is a planned day off: it never breaks the
+    // streak and never spends a forgiven rest day.
+    if (isRecovery(ms)) {
+      statuses.set(ms, "recovery");
+      if (!currentDone) inCurrent.add(ms);
+      continue;
+    }
+
 
     const previousMissedMs = restWindow[restWindow.length - 1];
     const consecutiveMiss = previousMissedMs === ms + DAY_MS;

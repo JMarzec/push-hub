@@ -20,18 +20,31 @@ interface TargetSheetProps {
   onOpenChange: (open: boolean) => void;
   dailyTarget: number;
   frequency: number;
-  onSave: (dailyTarget: number, frequency: number) => void;
+  restDayOfWeek?: number | null;
+  onSave: (dailyTarget: number, frequency: number, restDayOfWeek: number | null) => void;
 }
+
+const WEEKDAYS = [
+  { value: 1, short: "Mon" },
+  { value: 2, short: "Tue" },
+  { value: 3, short: "Wed" },
+  { value: 4, short: "Thu" },
+  { value: 5, short: "Fri" },
+  { value: 6, short: "Sat" },
+  { value: 0, short: "Sun" },
+] as const;
 
 export function TargetSheet({
   open,
   onOpenChange,
   dailyTarget,
   frequency,
+  restDayOfWeek = null,
   onSave,
 }: TargetSheetProps) {
   const [target, setTarget] = useState(dailyTarget);
   const [freq, setFreq] = useState(frequency);
+  const [restDay, setRestDay] = useState<number | null>(restDayOfWeek);
 
   const perSet = Math.ceil(target / freq);
 
@@ -42,6 +55,7 @@ export function TargetSheet({
         if (next) {
           setTarget(dailyTarget);
           setFreq(frequency);
+          setRestDay(restDayOfWeek);
         }
         onOpenChange(next);
       }}
@@ -101,6 +115,43 @@ export function TargetSheet({
           </div>
         </fieldset>
 
+        <fieldset className="mt-6">
+          <legend className="mb-1 text-sm font-medium text-muted-foreground">
+            Weekly recovery day (optional)
+          </legend>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Pick one day off a week. No target that day, your streak keeps running, and your squad
+            total drops by your target.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {WEEKDAYS.map((d) => (
+              <button
+                key={d.value}
+                type="button"
+                aria-pressed={restDay === d.value}
+                onClick={() => setRestDay(restDay === d.value ? null : d.value)}
+                className={cn(
+                  "min-h-11 rounded-full border px-3.5 text-sm font-semibold transition-colors",
+                  restDay === d.value
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:bg-accent",
+                )}
+              >
+                {d.short}
+              </button>
+            ))}
+          </div>
+          {restDay !== null ? (
+            <button
+              type="button"
+              onClick={() => setRestDay(null)}
+              className="mt-2 text-xs font-semibold text-muted-foreground underline"
+            >
+              No recovery day
+            </button>
+          ) : null}
+        </fieldset>
+
         <p className="mt-4 rounded-2xl bg-accent px-4 py-3 text-sm text-accent-foreground">
           That's about <span className="font-bold tabular-nums">{perSet}</span> push-ups per set,{" "}
           <span className="font-bold tabular-nums">{freq}</span>{" "}
@@ -110,7 +161,7 @@ export function TargetSheet({
         <Button
           className="mt-6 h-12 w-full rounded-full text-base font-bold"
           onClick={() => {
-            onSave(target, freq);
+            onSave(target, freq, restDay);
             onOpenChange(false);
           }}
         >

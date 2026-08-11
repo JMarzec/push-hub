@@ -23,6 +23,7 @@ import { TargetSheet } from "@/components/pushup/TargetSheet";
 import { useReminders } from "@/hooks/useReminders";
 import { composeSets } from "@/lib/pushup-schedule";
 import { factForDate } from "@/lib/wellbeing";
+import { WEEKDAY_LABELS } from "@/lib/streaks";
 import { createTeam, getMyTeam, renameTeam } from "@/lib/teams.functions";
 import { listConversions } from "@/lib/conversions.functions";
 import type { ActivityLog } from "@/components/pushup/LogSheet";
@@ -253,12 +254,18 @@ function Today() {
     }
   }
 
-  async function handleSaveTarget(nextTarget: number, nextFrequency: number) {
+  async function handleSaveTarget(
+    nextTarget: number,
+    nextFrequency: number,
+    nextRestDay: number | null,
+  ) {
     await targetMutation.mutateAsync({
-      data: { dailyTarget: nextTarget, frequency: nextFrequency },
+      data: { dailyTarget: nextTarget, frequency: nextFrequency, restDayOfWeek: nextRestDay },
     });
     toast.success(
-      `Target set: ${nextTarget} push-ups across ${nextFrequency} ${nextFrequency === 1 ? "set" : "sets"} a day.`,
+      `Target set: ${nextTarget} push-ups across ${nextFrequency} ${nextFrequency === 1 ? "set" : "sets"} a day${
+        nextRestDay === null ? "" : `, ${WEEKDAY_LABELS[nextRestDay]}s off`
+      }.`,
     );
   }
 
@@ -344,14 +351,28 @@ function Today() {
             completed={data.completedDays}
           />
 
+          {data.settings.isRecoveryDay ? (
+            <p className="mt-4 rounded-2xl bg-accent px-4 py-3 text-center text-sm font-semibold text-accent-foreground">
+              Recovery day — no target today. Your streak keeps running, and anything you log still
+              counts.
+            </p>
+          ) : null}
+
           <div className="mt-5 flex justify-center">
             <ProgressRing value={total} target={dailyTarget} />
           </div>
 
           <p className="mt-3 text-center text-sm text-muted-foreground">
-            Next set at <span className="font-semibold text-foreground">{nextSet.time}</span> —{" "}
-            {Math.max(nextSet.target - nextSet.reps, 0)} to go
+            {data.settings.isRecoveryDay ? (
+              "Resting today — log only if you feel like it."
+            ) : (
+              <>
+                Next set at <span className="font-semibold text-foreground">{nextSet.time}</span> —{" "}
+                {Math.max(nextSet.target - nextSet.reps, 0)} to go
+              </>
+            )}
           </p>
+
 
           <div className="mt-4 flex items-center justify-between rounded-2xl bg-secondary px-4 py-3">
             <div>
@@ -475,6 +496,7 @@ function Today() {
         onOpenChange={setTargetOpen}
         dailyTarget={dailyTarget}
         frequency={frequency}
+        restDayOfWeek={data.settings.restDayOfWeek}
         onSave={handleSaveTarget}
       />
 

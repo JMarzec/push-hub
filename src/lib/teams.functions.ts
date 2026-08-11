@@ -22,6 +22,8 @@ export interface TeamMemberStat {
   repsTotal: number;
   avatarUrl: string | null;
   followsShared: boolean;
+  /** True when today is this member's chosen weekly recovery day. */
+  onRecoveryDay: boolean;
 }
 
 export const getMyTeam = createServerFn({ method: "POST" })

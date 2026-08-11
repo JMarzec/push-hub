@@ -65,7 +65,10 @@ export async function fetchTeamStats(
 
   const [profiles, settings, logs] = await Promise.all([
     supabaseAdmin.from("profiles").select("id, display_name, avatar_url").in("id", memberIds),
-    supabaseAdmin.from("user_settings").select("user_id, daily_target").in("user_id", memberIds),
+    supabaseAdmin
+      .from("user_settings")
+      .select("user_id, daily_target, rest_day_of_week")
+      .in("user_id", memberIds),
     supabaseAdmin.from("pushup_logs").select("user_id, reps, log_date").in("user_id", memberIds),
   ]);
   if (profiles.error) throw new Error(profiles.error.message);
@@ -87,6 +90,10 @@ export async function fetchTeamStats(
       }),
   );
   const targetById = new Map((settings.data ?? []).map((s) => [s.user_id, s.daily_target]));
+  const restDayById = new Map(
+    (settings.data ?? []).map((s) => [s.user_id, s.rest_day_of_week ?? null]),
+  );
+  const todayWeekday = new Date(`${today}T00:00:00Z`).getUTCDay();
 
   const totals = new Map<string, { today: number; week: number; all: number }>();
   for (const id of memberIds) totals.set(id, { today: 0, week: 0, all: 0 });
@@ -102,15 +109,20 @@ export async function fetchTeamStats(
     .map((member) => {
       const bucket = totals.get(member.user_id) ?? { today: 0, week: 0, all: 0 };
       const followsShared = Boolean(member.follow_shared_target) && sharedTarget !== null;
+      const baseTarget = followsShared
+        ? (sharedTarget as number)
+        : (targetById.get(member.user_id) ?? 50);
+      // On a member's weekly recovery day they owe nothing, so the squad total
+      // drops by their target instead of counting them as behind.
+      const onRecoveryDay = restDayById.get(member.user_id) === todayWeekday;
       return {
         userId: member.user_id,
         displayName: nameById.get(member.user_id)?.trim() || "Member",
         role: member.role,
         repsToday: bucket.today,
-        dailyTarget: followsShared
-          ? (sharedTarget as number)
-          : (targetById.get(member.user_id) ?? 50),
+        dailyTarget: onRecoveryDay ? 0 : baseTarget,
         followsShared,
+        onRecoveryDay,
         repsWeek: bucket.week,
         repsTotal: bucket.all,
         avatarUrl: avatarById.get(member.user_id) ?? null,

@@ -3,7 +3,12 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { slotTimesFor } from "@/lib/pushup-schedule";
 import { applyDuePlans } from "@/lib/plans-apply";
-import { computeStreaks, MAX_REST_DAYS_PER_WINDOW, REST_WINDOW_DAYS } from "@/lib/streaks";
+import {
+  computeStreaks,
+  isRecoveryDate,
+  MAX_REST_DAYS_PER_WINDOW,
+  REST_WINDOW_DAYS,
+} from "@/lib/streaks";
 
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
@@ -120,11 +125,17 @@ export const getToday = createServerFn({ method: "POST" })
     }
 
     // Streak: use the same gap-tolerant rules as the Trophies screen.
+    const restDayOfWeek = settings.rest_day_of_week ?? null;
+    const isRecoveryDay = isRecoveryDate(data.today, restDayOfWeek);
     const target = settings.daily_target;
     const targetDates = Object.entries(repsByDate)
       .filter(([_, reps]) => reps >= target)
       .map(([date]) => date);
-    const streaks = computeStreaks(targetDates, data.today, { maxLookbackDays: 60, timelineDays: 30 });
+    const streaks = computeStreaks(targetDates, data.today, {
+      maxLookbackDays: 60,
+      timelineDays: 30,
+      restDayOfWeek,
+    });
     const streak = streaks.current;
 
 
@@ -148,6 +159,8 @@ export const getToday = createServerFn({ method: "POST" })
         disclaimerAcceptedAt: settings.disclaimer_accepted_at,
         onboardingCompletedAt: settings.onboarding_completed_at,
         remindersEnabled: settings.reminders_enabled,
+        restDayOfWeek,
+        isRecoveryDay,
         targetSource,
         squadName,
       },
@@ -229,17 +242,26 @@ export const updateTargetSettings = createServerFn({ method: "POST" })
       .object({
         dailyTarget: z.number().int().min(1).max(500),
         frequency: z.number().int().min(1).max(12),
+        // 0 = Sunday … 6 = Saturday; null clears the weekly recovery day.
+        restDayOfWeek: z.number().int().min(0).max(6).nullable().optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    const patch: {
+      daily_target: number;
+      frequency: number;
+      slot_times: string[];
+      rest_day_of_week?: number | null;
+    } = {
+      daily_target: data.dailyTarget,
+      frequency: data.frequency,
+      slot_times: slotTimesFor(data.frequency),
+    };
+    if (data.restDayOfWeek !== undefined) patch.rest_day_of_week = data.restDayOfWeek;
     const { error } = await context.supabase
       .from("user_settings")
-      .update({
-        daily_target: data.dailyTarget,
-        frequency: data.frequency,
-        slot_times: slotTimesFor(data.frequency),
-      })
+      .update(patch)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -314,7 +336,11 @@ export const getStats = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
 
     const [settingsRes, logsRes, bankRes, teamRes] = await Promise.all([
-      supabase.from("user_settings").select("daily_target").eq("user_id", userId).maybeSingle(),
+      supabase
+        .from("user_settings")
+        .select("daily_target, rest_day_of_week")
+        .eq("user_id", userId)
+        .maybeSingle(),
       supabase.from("pushup_logs").select("reps, log_date").eq("user_id", userId),
       supabase.from("bank_entries").select("reps, kind").eq("user_id", userId),
       supabase.from("team_members").select("team_id").eq("user_id", userId).limit(1),
@@ -323,6 +349,7 @@ export const getStats = createServerFn({ method: "POST" })
     if (bankRes.error) throw new Error(bankRes.error.message);
 
     const target = settingsRes.data?.daily_target ?? 50;
+    const restDayOfWeek = settingsRes.data?.rest_day_of_week ?? null;
     const repsByDate: Record<string, number> = {};
     let totalReps = 0;
     for (const log of logsRes.data ?? []) {
@@ -335,7 +362,7 @@ export const getStats = createServerFn({ method: "POST" })
     const targetDates = dates.filter((d) => (repsByDate[d] ?? 0) >= target);
     const targetDays = targetDates.length;
 
-    const streaks = computeStreaks(targetDates, data.today);
+    const streaks = computeStreaks(targetDates, data.today, { restDayOfWeek });
 
 
     const bankedTotal = (bankRes.data ?? [])
