@@ -23,6 +23,7 @@ import { TargetSheet } from "@/components/pushup/TargetSheet";
 import { useReminders } from "@/hooks/useReminders";
 import { composeSets } from "@/lib/pushup-schedule";
 import { factForDate } from "@/lib/wellbeing";
+import { WEEKDAY_LABELS } from "@/lib/streaks";
 import { createTeam, getMyTeam, renameTeam } from "@/lib/teams.functions";
 import { listConversions } from "@/lib/conversions.functions";
 import type { ActivityLog } from "@/components/pushup/LogSheet";
