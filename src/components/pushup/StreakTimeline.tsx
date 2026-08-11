@@ -159,7 +159,7 @@ export function StreakTimeline({
       </ol>
 
       <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
-        {(["hit", "rest", "break", "pending"] as DayStatus[]).map((s) => (
+        {(["hit", "rest", "recovery", "break", "pending"] as DayStatus[]).map((s) => (
           <li key={s} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <span className={`size-2.5 rounded-sm ${STATUS_META[s].dot}`} aria-hidden="true" />
             {STATUS_META[s].label}
