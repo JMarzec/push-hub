@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TabBar } from "@/components/pushup/TabBar";
 import { TargetSheet } from "@/components/pushup/TargetSheet";
+import { WEEKDAY_LABELS } from "@/lib/streaks";
 import { AvatarPicker } from "@/components/pushup/AvatarPicker";
 import { ReminderSheet } from "@/components/pushup/ReminderSheet";
 import { useReminders } from "@/hooks/useReminders";
