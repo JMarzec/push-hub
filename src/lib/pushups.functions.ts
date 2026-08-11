@@ -362,7 +362,7 @@ export const getStats = createServerFn({ method: "POST" })
     const targetDates = dates.filter((d) => (repsByDate[d] ?? 0) >= target);
     const targetDays = targetDates.length;
 
-    const streaks = computeStreaks(targetDates, data.today);
+    const streaks = computeStreaks(targetDates, data.today, { restDayOfWeek });
 
 
     const bankedTotal = (bankRes.data ?? [])
