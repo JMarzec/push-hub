@@ -300,6 +300,12 @@ function Me() {
             {dailyTarget} push-ups across {frequency} {frequency === 1 ? "set" : "sets"} a day ·{" "}
             {Math.ceil(dailyTarget / frequency)} per set
           </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {settingsQuery.data?.settings.restDayOfWeek === null ||
+            settingsQuery.data?.settings.restDayOfWeek === undefined
+              ? "No weekly recovery day set."
+              : `Recovery day: every ${WEEKDAY_LABELS[settingsQuery.data.settings.restDayOfWeek]}.`}
+          </p>
           {settingsQuery.data?.settings.targetSource === "squad" ? (
             <>
               <p className="mt-1 text-sm font-semibold text-primary">
