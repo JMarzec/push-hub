@@ -85,6 +85,7 @@ const STATUS_LABEL: Record<DayStatus, string> = {
   break: "Streak reset",
   pending: "Today, open",
   none: "No history",
+  recovery: "Recovery day",
 };
 
 function diffTimelines(before: TimelineDay[], after: TimelineDay[]): DayChange[] {
