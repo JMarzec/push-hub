@@ -3,7 +3,12 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { slotTimesFor } from "@/lib/pushup-schedule";
 import { applyDuePlans } from "@/lib/plans-apply";
-import { computeStreaks, MAX_REST_DAYS_PER_WINDOW, REST_WINDOW_DAYS } from "@/lib/streaks";
+import {
+  computeStreaks,
+  isRecoveryDate,
+  MAX_REST_DAYS_PER_WINDOW,
+  REST_WINDOW_DAYS,
+} from "@/lib/streaks";
 
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
