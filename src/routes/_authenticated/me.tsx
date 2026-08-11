@@ -439,12 +439,19 @@ function Me() {
         onOpenChange={setTargetOpen}
         dailyTarget={dailyTarget}
         frequency={frequency}
-        onSave={(nextTarget, nextFrequency) => {
+        restDayOfWeek={settingsQuery.data?.settings.restDayOfWeek ?? null}
+        onSave={(nextTarget, nextFrequency, nextRestDay) => {
           targetMutation.mutate({
-            data: { dailyTarget: nextTarget, frequency: nextFrequency },
+            data: {
+              dailyTarget: nextTarget,
+              frequency: nextFrequency,
+              restDayOfWeek: nextRestDay,
+            },
           });
           toast.success(
-            `Target set: ${nextTarget} push-ups across ${nextFrequency} ${nextFrequency === 1 ? "set" : "sets"} a day.`,
+            `Target set: ${nextTarget} push-ups across ${nextFrequency} ${nextFrequency === 1 ? "set" : "sets"} a day${
+              nextRestDay === null ? "" : `, ${WEEKDAY_LABELS[nextRestDay]}s off`
+            }.`,
           );
         }}
       />
