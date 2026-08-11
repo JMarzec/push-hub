@@ -275,6 +275,7 @@ export type Database = {
           onboarding_completed_at: string | null
           parq_passed: boolean
           reminders_enabled: boolean
+          rest_day_of_week: number | null
           slot_times: string[]
           start_date: string
           timezone: string
@@ -290,6 +291,7 @@ export type Database = {
           onboarding_completed_at?: string | null
           parq_passed?: boolean
           reminders_enabled?: boolean
+          rest_day_of_week?: number | null
           slot_times?: string[]
           start_date?: string
           timezone?: string
@@ -305,6 +307,7 @@ export type Database = {
           onboarding_completed_at?: string | null
           parq_passed?: boolean
           reminders_enabled?: boolean
+          rest_day_of_week?: number | null
           slot_times?: string[]
           start_date?: string
           timezone?: string
