@@ -126,9 +126,18 @@ export function computeStreaks(
 
     // Today that isn't done yet is neutral.
     if (ms === todayMs) {
-      statuses.set(ms, "pending");
+      statuses.set(ms, isRecovery(ms) ? "recovery" : "pending");
       continue;
     }
+
+    // The chosen weekly recovery day is a planned day off: it never breaks the
+    // streak and never spends a forgiven rest day.
+    if (isRecovery(ms)) {
+      statuses.set(ms, "recovery");
+      if (!currentDone) inCurrent.add(ms);
+      continue;
+    }
+
 
     const previousMissedMs = restWindow[restWindow.length - 1];
     const consecutiveMiss = previousMissedMs === ms + DAY_MS;
