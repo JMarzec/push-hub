@@ -120,11 +120,17 @@ export const getToday = createServerFn({ method: "POST" })
     }
 
     // Streak: use the same gap-tolerant rules as the Trophies screen.
+    const restDayOfWeek = settings.rest_day_of_week ?? null;
+    const isRecoveryDay = isRecoveryDate(data.today, restDayOfWeek);
     const target = settings.daily_target;
     const targetDates = Object.entries(repsByDate)
       .filter(([_, reps]) => reps >= target)
       .map(([date]) => date);
-    const streaks = computeStreaks(targetDates, data.today, { maxLookbackDays: 60, timelineDays: 30 });
+    const streaks = computeStreaks(targetDates, data.today, {
+      maxLookbackDays: 60,
+      timelineDays: 30,
+      restDayOfWeek,
+    });
     const streak = streaks.current;
 
 
