@@ -336,7 +336,11 @@ export const getStats = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
 
     const [settingsRes, logsRes, bankRes, teamRes] = await Promise.all([
-      supabase.from("user_settings").select("daily_target").eq("user_id", userId).maybeSingle(),
+      supabase
+        .from("user_settings")
+        .select("daily_target, rest_day_of_week")
+        .eq("user_id", userId)
+        .maybeSingle(),
       supabase.from("pushup_logs").select("reps, log_date").eq("user_id", userId),
       supabase.from("bank_entries").select("reps, kind").eq("user_id", userId),
       supabase.from("team_members").select("team_id").eq("user_id", userId).limit(1),
