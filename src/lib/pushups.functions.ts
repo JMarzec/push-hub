@@ -119,17 +119,14 @@ export const getToday = createServerFn({ method: "POST" })
       }
     }
 
-    // Streak: consecutive days up to yesterday that hit the target, plus today if hit.
+    // Streak: use the same gap-tolerant rules as the Trophies screen.
     const target = settings.daily_target;
-    let streak = 0;
-    const cursor = new Date(`${data.today}T00:00:00Z`);
-    if ((repsByDate[data.today] ?? 0) < target) cursor.setUTCDate(cursor.getUTCDate() - 1);
-    for (let i = 0; i < 60; i += 1) {
-      const key = cursor.toISOString().slice(0, 10);
-      if ((repsByDate[key] ?? 0) < target) break;
-      streak += 1;
-      cursor.setUTCDate(cursor.getUTCDate() - 1);
-    }
+    const targetDates = Object.entries(repsByDate)
+      .filter(([_, reps]) => reps >= target)
+      .map(([date]) => date);
+    const streaks = computeStreaks(targetDates, data.today, { maxLookbackDays: 60, timelineDays: 30 });
+    const streak = streaks.current;
+
 
     const startMs = Date.parse(`${settings.start_date}T00:00:00Z`);
     const todayMs = Date.parse(`${data.today}T00:00:00Z`);
