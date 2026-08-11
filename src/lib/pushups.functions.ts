@@ -242,17 +242,26 @@ export const updateTargetSettings = createServerFn({ method: "POST" })
       .object({
         dailyTarget: z.number().int().min(1).max(500),
         frequency: z.number().int().min(1).max(12),
+        // 0 = Sunday … 6 = Saturday; null clears the weekly recovery day.
+        restDayOfWeek: z.number().int().min(0).max(6).nullable().optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    const patch: {
+      daily_target: number;
+      frequency: number;
+      slot_times: string[];
+      rest_day_of_week?: number | null;
+    } = {
+      daily_target: data.dailyTarget,
+      frequency: data.frequency,
+      slot_times: slotTimesFor(data.frequency),
+    };
+    if (data.restDayOfWeek !== undefined) patch.rest_day_of_week = data.restDayOfWeek;
     const { error } = await context.supabase
       .from("user_settings")
-      .update({
-        daily_target: data.dailyTarget,
-        frequency: data.frequency,
-        slot_times: slotTimesFor(data.frequency),
-      })
+      .update(patch)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
