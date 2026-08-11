@@ -56,6 +56,11 @@ const STATUS_META: Record<DayStatus, { label: string; dot: string; note: string 
     dot: "bg-secondary",
     note: "Outside your logging history.",
   },
+  recovery: {
+    label: "Recovery day",
+    dot: "bg-accent ring-1 ring-inset ring-primary/40",
+    note: "Your weekly day off — no target, streak keeps running.",
+  },
 };
 
 const shortDate = (date: string) => date.slice(5).replace("-", "/");
