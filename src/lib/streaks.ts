@@ -60,9 +60,16 @@ const toMs = (date: string) => Date.parse(`${date}T00:00:00Z`);
 export function computeStreaks(
   hitDates: Iterable<string>,
   today: string,
-  options: { maxLookbackDays?: number; timelineDays?: number } = {},
+  options: {
+    maxLookbackDays?: number;
+    timelineDays?: number;
+    /** 0 = Sunday … 6 = Saturday. That weekday never counts as a miss. */
+    restDayOfWeek?: number | null;
+  } = {},
 ): StreakResult {
-  const { maxLookbackDays = 730, timelineDays = 30 } = options;
+  const { maxLookbackDays = 730, timelineDays = 30, restDayOfWeek = null } = options;
+  const isRecovery = (ms: number) =>
+    restDayOfWeek !== null && new Date(ms).getUTCDay() === restDayOfWeek;
   const hits = new Set(hitDates);
   const todayMs = toMs(today);
 
