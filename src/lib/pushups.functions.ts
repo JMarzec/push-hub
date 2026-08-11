@@ -349,6 +349,7 @@ export const getStats = createServerFn({ method: "POST" })
     if (bankRes.error) throw new Error(bankRes.error.message);
 
     const target = settingsRes.data?.daily_target ?? 50;
+    const restDayOfWeek = settingsRes.data?.rest_day_of_week ?? null;
     const repsByDate: Record<string, number> = {};
     let totalReps = 0;
     for (const log of logsRes.data ?? []) {
