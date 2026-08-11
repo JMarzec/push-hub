@@ -20,18 +20,31 @@ interface TargetSheetProps {
   onOpenChange: (open: boolean) => void;
   dailyTarget: number;
   frequency: number;
-  onSave: (dailyTarget: number, frequency: number) => void;
+  restDayOfWeek?: number | null;
+  onSave: (dailyTarget: number, frequency: number, restDayOfWeek: number | null) => void;
 }
+
+const WEEKDAYS = [
+  { value: 1, short: "Mon" },
+  { value: 2, short: "Tue" },
+  { value: 3, short: "Wed" },
+  { value: 4, short: "Thu" },
+  { value: 5, short: "Fri" },
+  { value: 6, short: "Sat" },
+  { value: 0, short: "Sun" },
+] as const;
 
 export function TargetSheet({
   open,
   onOpenChange,
   dailyTarget,
   frequency,
+  restDayOfWeek = null,
   onSave,
 }: TargetSheetProps) {
   const [target, setTarget] = useState(dailyTarget);
   const [freq, setFreq] = useState(frequency);
+  const [restDay, setRestDay] = useState<number | null>(restDayOfWeek);
 
   const perSet = Math.ceil(target / freq);
 
