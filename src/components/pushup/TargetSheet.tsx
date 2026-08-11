@@ -55,6 +55,7 @@ export function TargetSheet({
         if (next) {
           setTarget(dailyTarget);
           setFreq(frequency);
+          setRestDay(restDayOfWeek);
         }
         onOpenChange(next);
       }}
