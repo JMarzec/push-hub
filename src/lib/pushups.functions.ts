@@ -159,6 +159,8 @@ export const getToday = createServerFn({ method: "POST" })
         disclaimerAcceptedAt: settings.disclaimer_accepted_at,
         onboardingCompletedAt: settings.onboarding_completed_at,
         remindersEnabled: settings.reminders_enabled,
+        restDayOfWeek,
+        isRecoveryDay,
         targetSource,
         squadName,
       },
