@@ -13,7 +13,23 @@ export const MAX_REST_DAYS_PER_WINDOW = 1;
 export const REST_WINDOW_DAYS = 7;
 const DAY_MS = 86_400_000;
 
-export type DayStatus = "hit" | "rest" | "break" | "pending" | "none";
+export type DayStatus = "hit" | "rest" | "break" | "pending" | "none" | "recovery";
+
+/** Day-of-week helper: 0 = Sunday … 6 = Saturday, matching Date#getUTCDay. */
+export const WEEKDAY_LABELS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const;
+
+export function isRecoveryDate(date: string, restDayOfWeek: number | null | undefined): boolean {
+  if (restDayOfWeek === null || restDayOfWeek === undefined) return false;
+  return new Date(`${date}T00:00:00Z`).getUTCDay() === restDayOfWeek;
+}
 
 export type StreakDay = {
   date: string;
