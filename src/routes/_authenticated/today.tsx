@@ -351,14 +351,28 @@ function Today() {
             completed={data.completedDays}
           />
 
+          {data.settings.isRecoveryDay ? (
+            <p className="mt-4 rounded-2xl bg-accent px-4 py-3 text-center text-sm font-semibold text-accent-foreground">
+              Recovery day — no target today. Your streak keeps running, and anything you log still
+              counts.
+            </p>
+          ) : null}
+
           <div className="mt-5 flex justify-center">
             <ProgressRing value={total} target={dailyTarget} />
           </div>
 
           <p className="mt-3 text-center text-sm text-muted-foreground">
-            Next set at <span className="font-semibold text-foreground">{nextSet.time}</span> —{" "}
-            {Math.max(nextSet.target - nextSet.reps, 0)} to go
+            {data.settings.isRecoveryDay ? (
+              "Resting today — log only if you feel like it."
+            ) : (
+              <>
+                Next set at <span className="font-semibold text-foreground">{nextSet.time}</span> —{" "}
+                {Math.max(nextSet.target - nextSet.reps, 0)} to go
+              </>
+            )}
           </p>
+
 
           <div className="mt-4 flex items-center justify-between rounded-2xl bg-secondary px-4 py-3">
             <div>
