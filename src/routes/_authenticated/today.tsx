@@ -253,12 +253,18 @@ function Today() {
     }
   }
 
-  async function handleSaveTarget(nextTarget: number, nextFrequency: number) {
+  async function handleSaveTarget(
+    nextTarget: number,
+    nextFrequency: number,
+    nextRestDay: number | null,
+  ) {
     await targetMutation.mutateAsync({
-      data: { dailyTarget: nextTarget, frequency: nextFrequency },
+      data: { dailyTarget: nextTarget, frequency: nextFrequency, restDayOfWeek: nextRestDay },
     });
     toast.success(
-      `Target set: ${nextTarget} push-ups across ${nextFrequency} ${nextFrequency === 1 ? "set" : "sets"} a day.`,
+      `Target set: ${nextTarget} push-ups across ${nextFrequency} ${nextFrequency === 1 ? "set" : "sets"} a day${
+        nextRestDay === null ? "" : `, ${WEEKDAY_LABELS[nextRestDay]}s off`
+      }.`,
     );
   }
 
