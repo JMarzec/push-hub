@@ -118,8 +118,6 @@ export async function fetchTeamStats(
     if (!bucket) continue;
     const signed = entry.kind === "withdrawal" ? entry.reps : -entry.reps;
     if (entry.entry_date === today) bucket.today += signed;
-    if (entry.entry_date >= weekAgo) bucket.week += signed;
-    bucket.all += signed;
   }
 
   return (roster ?? [])
