@@ -18,7 +18,9 @@ import { InviteSheet } from "@/components/pushup/InviteSheet";
 import { LogSheet } from "@/components/pushup/LogSheet";
 import { ProgressRing } from "@/components/pushup/ProgressRing";
 import { SetChips } from "@/components/pushup/SetChips";
+import { StreakBreakdown } from "@/components/pushup/StreakBreakdown";
 import { TabBar } from "@/components/pushup/TabBar";
+
 import { TargetSheet } from "@/components/pushup/TargetSheet";
 import { useReminders } from "@/hooks/useReminders";
 import { composeSets } from "@/lib/pushup-schedule";
