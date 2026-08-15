@@ -443,6 +443,18 @@ function Today() {
           <SetChips sets={sets} />
         </section>
 
+        {statsQuery.data ? (
+          <StreakBreakdown
+            timeline={statsQuery.data.streakTimeline}
+            currentStreak={statsQuery.data.currentStreak}
+            dailyTarget={statsQuery.data.dailyTarget}
+            restDaysLeft={statsQuery.data.restDaysLeft}
+            restAllowance={statsQuery.data.restAllowance}
+          />
+        ) : null}
+
+
+
         <section className="mt-5 rounded-2xl bg-accent p-4" aria-labelledby="fact-heading">
           <h2 id="fact-heading" className="text-sm font-bold text-accent-foreground">
             Today's wellbeing fact
