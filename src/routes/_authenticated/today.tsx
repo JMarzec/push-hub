@@ -102,6 +102,12 @@ function Today() {
     staleTime: 15_000,
   });
   const team = teamQuery.data?.team ?? null;
+  const statsQuery = useQuery({
+    queryKey: ["stats", today],
+    queryFn: () => getStats({ data: { today } }),
+    staleTime: 30_000,
+  });
+
   const conversionsQuery = useQuery({
     queryKey: ["conversions"],
     queryFn: () => listConversions(),
