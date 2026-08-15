@@ -18,7 +18,9 @@ import { InviteSheet } from "@/components/pushup/InviteSheet";
 import { LogSheet } from "@/components/pushup/LogSheet";
 import { ProgressRing } from "@/components/pushup/ProgressRing";
 import { SetChips } from "@/components/pushup/SetChips";
+import { StreakBreakdown } from "@/components/pushup/StreakBreakdown";
 import { TabBar } from "@/components/pushup/TabBar";
+
 import { TargetSheet } from "@/components/pushup/TargetSheet";
 import { useReminders } from "@/hooks/useReminders";
 import { composeSets } from "@/lib/pushup-schedule";
@@ -29,7 +31,9 @@ import { listConversions } from "@/lib/conversions.functions";
 import type { ActivityLog } from "@/components/pushup/LogSheet";
 import {
   deleteLog,
+  getStats,
   getToday,
+
   logReps,
   moveBank,
   undoBankEntry,
@@ -102,6 +106,12 @@ function Today() {
     staleTime: 15_000,
   });
   const team = teamQuery.data?.team ?? null;
+  const statsQuery = useQuery({
+    queryKey: ["stats", today],
+    queryFn: () => getStats({ data: { today } }),
+    staleTime: 30_000,
+  });
+
   const conversionsQuery = useQuery({
     queryKey: ["conversions"],
     queryFn: () => listConversions(),
@@ -442,6 +452,18 @@ function Today() {
           </h2>
           <SetChips sets={sets} />
         </section>
+
+        {statsQuery.data ? (
+          <StreakBreakdown
+            timeline={statsQuery.data.streakTimeline}
+            currentStreak={statsQuery.data.currentStreak}
+            dailyTarget={statsQuery.data.dailyTarget}
+            restDaysLeft={statsQuery.data.restDaysLeft}
+            restAllowance={statsQuery.data.restAllowance}
+          />
+        ) : null}
+
+
 
         <section className="mt-5 rounded-2xl bg-accent p-4" aria-labelledby="fact-heading">
           <h2 id="fact-heading" className="text-sm font-bold text-accent-foreground">
