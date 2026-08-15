@@ -63,17 +63,24 @@ export async function fetchTeamStats(
   const today = new Date().toISOString().slice(0, 10);
   const weekAgo = new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10);
 
-  const [profiles, settings, logs] = await Promise.all([
+  const [profiles, settings, logs, bank] = await Promise.all([
     supabaseAdmin.from("profiles").select("id, display_name, avatar_url").in("id", memberIds),
     supabaseAdmin
       .from("user_settings")
       .select("user_id, daily_target, rest_day_of_week")
       .in("user_id", memberIds),
     supabaseAdmin.from("pushup_logs").select("user_id, reps, log_date").in("user_id", memberIds),
+    // Banked reps move progress between days, so today's squad numbers must
+    // follow the same maths as each member's own ring.
+    supabaseAdmin
+      .from("bank_entries")
+      .select("user_id, reps, kind, entry_date")
+      .in("user_id", memberIds),
   ]);
   if (profiles.error) throw new Error(profiles.error.message);
   if (settings.error) throw new Error(settings.error.message);
   if (logs.error) throw new Error(logs.error.message);
+  if (bank.error) throw new Error(bank.error.message);
 
   const nameById = new Map((profiles.data ?? []).map((p) => [p.id, p.display_name]));
 
