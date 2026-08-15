@@ -111,6 +111,16 @@ export async function fetchTeamStats(
     if (log.log_date >= weekAgo) bucket.week += log.reps;
     if (log.log_date === today) bucket.today += log.reps;
   }
+  // Withdrawals add banked reps to the day they were applied; deposits move
+  // reps out of that day into the bank.
+  for (const entry of bank.data ?? []) {
+    const bucket = totals.get(entry.user_id);
+    if (!bucket) continue;
+    const signed = entry.kind === "withdrawal" ? entry.reps : -entry.reps;
+    if (entry.entry_date === today) bucket.today += signed;
+    if (entry.entry_date >= weekAgo) bucket.week += signed;
+    bucket.all += signed;
+  }
 
   return (roster ?? [])
     .map((member) => {
