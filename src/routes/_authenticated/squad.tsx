@@ -217,6 +217,12 @@ function Squad() {
           <p className="mt-3 text-center text-sm text-muted-foreground tabular-nums">
             {teamToday} of {teamTarget} combined push-ups
           </p>
+          {restingCount > 0 ? (
+            <p className="mt-1 text-center text-xs text-muted-foreground">
+              {restingCount} {restingCount === 1 ? "member is" : "members are"} on a recovery day —
+              their target isn't counted today.
+            </p>
+          ) : null}
         </section>
 
         <SharedTargetCard
