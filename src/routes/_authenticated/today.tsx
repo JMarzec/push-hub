@@ -460,6 +460,10 @@ function Today() {
             dailyTarget={statsQuery.data.dailyTarget}
             restDaysLeft={statsQuery.data.restDaysLeft}
             restAllowance={statsQuery.data.restAllowance}
+            onChanged={() => {
+              void queryClient.invalidateQueries({ queryKey: ["stats", today] });
+              void queryClient.invalidateQueries({ queryKey: ["today"] });
+            }}
           />
         ) : null}
 
