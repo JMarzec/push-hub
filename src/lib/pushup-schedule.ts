@@ -58,14 +58,20 @@ export function composeSets(
     .reduce((sum, [, reps]) => sum + reps, 0);
   if (orphaned > 0 && sets[0]) sets[0] = { ...sets[0], reps: sets[0].reps + orphaned };
 
-  let toRemove = depositedToday;
+  // A day's bank effect is the NET of transfers: withdrawals add reps, deposits
+  // take them away. Applying them separately let a deposit "fall off" when the
+  // day's logged reps were 0 (e.g. withdraw 50, bank 50, withdraw 50 again),
+  // which double-counted banked reps on the ring versus the squad total.
+  const netBank = withdrawnToday - depositedToday;
+
+  let toRemove = Math.max(-netBank, 0);
   for (let i = sets.length - 1; i >= 0 && toRemove > 0; i -= 1) {
     const take = Math.min(sets[i]!.reps, toRemove);
     sets[i] = { ...sets[i]!, reps: sets[i]!.reps - take };
     toRemove -= take;
   }
 
-  let toAdd = withdrawnToday;
+  let toAdd = Math.max(netBank, 0);
   for (let i = 0; i < sets.length && toAdd > 0; i += 1) {
     const room = Math.max(sets[i]!.target - sets[i]!.reps, 0);
     const give = Math.min(room, toAdd);
