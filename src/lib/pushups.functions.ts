@@ -409,7 +409,7 @@ export const getDayLogs = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ date: dateSchema }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const [settingsRes, logsRes] = await Promise.all([
+    const [settingsRes, logsRes, bankRes] = await Promise.all([
       supabase.from("user_settings").select("daily_target").eq("user_id", userId).maybeSingle(),
       supabase
         .from("pushup_logs")
@@ -417,13 +417,28 @@ export const getDayLogs = createServerFn({ method: "POST" })
         .eq("user_id", userId)
         .eq("log_date", data.date)
         .order("logged_at", { ascending: true }),
+      supabase
+        .from("bank_entries")
+        .select("id, reps, kind, entry_date")
+        .eq("user_id", userId)
+        .eq("entry_date", data.date),
     ]);
     if (logsRes.error) throw new Error(logsRes.error.message);
+    if (bankRes.error) throw new Error(bankRes.error.message);
     const logs = logsRes.data ?? [];
+    const bankEntries = bankRes.data ?? [];
+    const deposited = bankEntries
+      .filter((e) => e.kind === "deposit")
+      .reduce((sum, e) => sum + e.reps, 0);
+    const withdrawn = bankEntries
+      .filter((e) => e.kind === "withdrawal")
+      .reduce((sum, e) => sum + e.reps, 0);
     return {
       date: data.date,
       dailyTarget: settingsRes.data?.daily_target ?? 50,
       totalReps: logs.reduce((sum, l) => sum + l.reps, 0),
+      deposited,
+      withdrawn,
       logs: logs.map((l) => ({
           id: l.id,
           reps: l.reps,
