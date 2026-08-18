@@ -93,13 +93,17 @@ export function DayDetailsSheet({ date, status, inCurrentStreak, onOpenChange, o
   const meta = STATUS_COPY[status];
   const target = data?.dailyTarget ?? 0;
   const total = data?.totalReps ?? 0;
+  const deposited = data?.deposited ?? 0;
+  const withdrawn = data?.withdrawn ?? 0;
   const pct = target > 0 ? Math.min(100, Math.round((total / target) * 100)) : 0;
 
   return (
     <Sheet open={!!date} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-3xl border-border">
         <SheetHeader className="text-left">
-          <SheetTitle className="text-foreground tabular-nums">{date}</SheetTitle>
+          <SheetTitle className="text-foreground tabular-nums">
+            {date ? shortDate(date) : "Day details"}
+          </SheetTitle>
           <SheetDescription>{meta.note}</SheetDescription>
         </SheetHeader>
 
@@ -122,6 +126,13 @@ export function DayDetailsSheet({ date, status, inCurrentStreak, onOpenChange, o
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background">
               <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
             </div>
+            {(deposited > 0 || withdrawn > 0) ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {withdrawn > 0 ? `${withdrawn} from bank used` : ""}
+                {withdrawn > 0 && deposited > 0 ? " · " : ""}
+                {deposited > 0 ? `${deposited} banked for later` : ""}
+              </p>
+            ) : null}
           </div>
 
           {isPending ? (
