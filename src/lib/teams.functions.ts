@@ -28,7 +28,15 @@ export interface TeamMemberStat {
 
 export const getMyTeam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  // Squad numbers must line up with each member's own ring, so the caller sends
+  // its local date instead of letting the server assume UTC.
+  .inputValidator((input: unknown) =>
+    z
+      .object({ today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() })
+      .catch({})
+      .parse(input ?? {}),
+  )
+  .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
     const { data: membership, error: memberError } = await supabase
