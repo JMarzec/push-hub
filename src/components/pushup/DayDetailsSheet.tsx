@@ -13,6 +13,13 @@ import {
 import { deleteLog, getDayLogs, updateLog } from "@/lib/pushups.functions";
 import type { DayStatus } from "@/lib/streaks";
 
+const shortDate = (date: string) =>
+  new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+
 const STATUS_COPY: Record<DayStatus, { label: string; note: string; className: string }> = {
   hit: {
     label: "Counted",
