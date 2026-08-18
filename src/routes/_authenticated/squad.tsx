@@ -101,6 +101,7 @@ function Squad() {
   const members = data.members;
   const teamToday = members.reduce((sum, m) => sum + m.repsToday, 0);
   const teamTarget = members.reduce((sum, m) => sum + m.dailyTarget, 0) || 1;
+  const restingCount = members.filter((m) => m.onRecoveryDay).length;
 
   const ranked = [...members].sort((a, b) =>
     board === "today"
@@ -217,6 +218,12 @@ function Squad() {
           <p className="mt-3 text-center text-sm text-muted-foreground tabular-nums">
             {teamToday} of {teamTarget} combined push-ups
           </p>
+          {restingCount > 0 ? (
+            <p className="mt-1 text-center text-xs text-muted-foreground">
+              {restingCount} {restingCount === 1 ? "member is" : "members are"} on a recovery day —
+              their target isn't counted today.
+            </p>
+          ) : null}
         </section>
 
         <SharedTargetCard
