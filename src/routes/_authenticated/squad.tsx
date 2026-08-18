@@ -101,6 +101,7 @@ function Squad() {
   const members = data.members;
   const teamToday = members.reduce((sum, m) => sum + m.repsToday, 0);
   const teamTarget = members.reduce((sum, m) => sum + m.dailyTarget, 0) || 1;
+  const restingCount = members.filter((m) => m.onRecoveryDay).length;
 
   const ranked = [...members].sort((a, b) =>
     board === "today"
