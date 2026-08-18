@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronDown, Flame } from "lucide-react";
 import type { DayStatus } from "@/lib/streaks";
 import type { TimelineDay } from "@/components/pushup/StreakTimeline";
+import { DayDetailsSheet } from "@/components/pushup/DayDetailsSheet";
 
 type Props = {
   timeline: TimelineDay[];
@@ -9,6 +10,7 @@ type Props = {
   dailyTarget: number;
   restDaysLeft: number;
   restAllowance: number;
+  onChanged?: () => void;
 };
 
 const GROUPS: { status: DayStatus; label: string; note: string; dot: string }[] = [
@@ -51,8 +53,12 @@ export function StreakBreakdown({
   dailyTarget,
   restDaysLeft,
   restAllowance,
+  onChanged,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const selectedDay = selectedDate ? timeline.find((d) => d.date === selectedDate) ?? null : null;
+
   const relevant = timeline.filter((d) => d.status !== "none" && d.status !== "pending");
   const recent = relevant.slice(-30).reverse();
 
@@ -104,15 +110,18 @@ export function StreakBreakdown({
                 <p className="mt-0.5 pl-[18px] text-[11px] text-muted-foreground">{group.note}</p>
                 <ul className="mt-2 divide-y divide-border overflow-hidden rounded-2xl bg-secondary">
                   {group.days.map((day) => (
-                    <li
-                      key={day.date}
-                      className="flex items-center justify-between px-3 py-2 text-[11px]"
-                    >
-                      <span className="font-semibold text-foreground">{shortDate(day.date)}</span>
-                      <span className="text-muted-foreground tabular-nums">
-                        {day.reps}/{dailyTarget} reps
-                        {day.inCurrentStreak ? " · in current streak" : ""}
-                      </span>
+                    <li key={day.date}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDate(day.date)}
+                        className="flex w-full items-center justify-between px-3 py-2 text-[11px] transition-colors hover:bg-secondary-foreground/5"
+                      >
+                        <span className="font-semibold text-foreground">{shortDate(day.date)}</span>
+                        <span className="text-muted-foreground tabular-nums">
+                          {day.reps}/{dailyTarget} reps
+                          {day.inCurrentStreak ? " · in current streak" : ""}
+                        </span>
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -120,11 +129,24 @@ export function StreakBreakdown({
             ))}
             <p className="text-[11px] text-muted-foreground">
               Last 30 days. One missed day per rolling week is forgiven; a second miss resets the
-              streak.
+              streak. Tap a day for details.
             </p>
           </div>
         )
       ) : null}
+
+      <DayDetailsSheet
+        date={selectedDate}
+        status={selectedDay?.status ?? "none"}
+        inCurrentStreak={selectedDay?.inCurrentStreak ?? false}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setSelectedDate(null);
+        }}
+        onChanged={() => {
+          setSelectedDate(null);
+          onChanged?.();
+        }}
+      />
     </section>
   );
 }
