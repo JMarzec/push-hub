@@ -19,10 +19,11 @@ import {
   setFollowSharedTarget,
   setSharedTarget,
 } from "@/lib/teams.functions";
+import { localToday } from "@/lib/local-date";
 
 export const teamQueryOptions = queryOptions({
   queryKey: ["team"],
-  queryFn: () => getMyTeam(),
+  queryFn: () => getMyTeam({ data: { today: localToday() } }),
   staleTime: 5_000,
   refetchOnMount: "always",
   refetchInterval: 30_000,
