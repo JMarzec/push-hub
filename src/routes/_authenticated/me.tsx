@@ -89,7 +89,7 @@ function Me() {
   });
   const teamQuery = useQuery({
     queryKey: ["team"],
-    queryFn: () => getMyTeam(),
+    queryFn: () => getMyTeam({ data: { today: localToday() } }),
     staleTime: 15_000,
   });
 

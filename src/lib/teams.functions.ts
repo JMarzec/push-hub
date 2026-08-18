@@ -28,7 +28,15 @@ export interface TeamMemberStat {
 
 export const getMyTeam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  // Squad numbers must line up with each member's own ring, so the caller sends
+  // its local date instead of letting the server assume UTC.
+  .inputValidator((input: unknown) =>
+    z
+      .object({ today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() })
+      .catch({})
+      .parse(input ?? {}),
+  )
+  .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
     const { data: membership, error: memberError } = await supabase
@@ -55,7 +63,7 @@ export const getMyTeam = createServerFn({ method: "POST" })
     // Roster + teammate stats need to read other members' rows, so they run
     // through trusted server code after membership above is confirmed.
     const { fetchTeamStats } = await import("./teams.server");
-    const members = await fetchTeamStats(team.id, team.shared_target);
+    const members = await fetchTeamStats(team.id, team.shared_target, data.today);
 
     return {
       team: {

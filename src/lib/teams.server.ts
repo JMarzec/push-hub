@@ -49,6 +49,7 @@ export async function addTeamMember(teamId: string, userId: string): Promise<voi
 export async function fetchTeamStats(
   teamId: string,
   sharedTarget: number | null = null,
+  viewerToday?: string,
 ): Promise<TeamMemberStat[]> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -60,8 +61,11 @@ export async function fetchTeamStats(
   const memberIds = (roster ?? []).map((m) => m.user_id);
   if (memberIds.length === 0) return [];
 
-  const today = new Date().toISOString().slice(0, 10);
-  const weekAgo = new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10);
+  // The viewer's local date keeps the squad ring in step with their own ring
+  // around midnight; UTC is only the fallback for legacy callers.
+  const today = viewerToday ?? new Date().toISOString().slice(0, 10);
+  const todayMs = Date.parse(`${today}T00:00:00Z`);
+  const weekAgo = new Date(todayMs - 6 * 86_400_000).toISOString().slice(0, 10);
 
   const [profiles, settings, logs, bank] = await Promise.all([
     supabaseAdmin.from("profiles").select("id, display_name, avatar_url").in("id", memberIds),
@@ -108,16 +112,18 @@ export async function fetchTeamStats(
     const bucket = totals.get(log.user_id);
     if (!bucket) continue;
     bucket.all += log.reps;
-    if (log.log_date >= weekAgo) bucket.week += log.reps;
+    if (log.log_date >= weekAgo && log.log_date <= today) bucket.week += log.reps;
     if (log.log_date === today) bucket.today += log.reps;
   }
   // Withdrawals add banked reps to the day they were applied; deposits move
-  // reps out of that day into the bank.
+  // reps out of that day into the bank — for the 7-day board too, so reps spent
+  // this week count here even when they were performed earlier.
   for (const entry of bank.data ?? []) {
     const bucket = totals.get(entry.user_id);
     if (!bucket) continue;
     const signed = entry.kind === "withdrawal" ? entry.reps : -entry.reps;
     if (entry.entry_date === today) bucket.today += signed;
+    if (entry.entry_date >= weekAgo && entry.entry_date <= today) bucket.week += signed;
   }
 
   return (roster ?? [])
