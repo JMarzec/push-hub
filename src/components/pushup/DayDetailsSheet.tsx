@@ -57,11 +57,21 @@ type Props = {
   date: string | null;
   status: DayStatus;
   inCurrentStreak: boolean;
+  restAllowance?: number;
+  restDaysLeft?: number;
   onOpenChange: (open: boolean) => void;
   onChanged: () => void;
 };
 
-export function DayDetailsSheet({ date, status, inCurrentStreak, onOpenChange, onChanged }: Props) {
+export function DayDetailsSheet({
+  date,
+  status,
+  inCurrentStreak,
+  restAllowance = 1,
+  restDaysLeft,
+  onOpenChange,
+  onChanged,
+}: Props) {
   const queryClient = useQueryClient();
   const fetchDay = useServerFn(getDayLogs);
   const saveLog = useServerFn(updateLog);
@@ -103,6 +113,48 @@ export function DayDetailsSheet({ date, status, inCurrentStreak, onOpenChange, o
   const deposited = data?.deposited ?? 0;
   const withdrawn = data?.withdrawn ?? 0;
   const pct = target > 0 ? Math.min(100, Math.round((total / target) * 100)) : 0;
+  const short = Math.max(0, target - total);
+
+  const streakLines: string[] = (() => {
+    const rule = `Gap-tolerant rule: up to ${restAllowance} missed day${restAllowance === 1 ? "" : "s"} per rolling 7-day window is forgiven.`;
+    switch (status) {
+      case "hit":
+        return [
+          `You logged ${total} of the ${target} rep target, so this day counted and added +1 to the streak.`,
+          withdrawn > 0
+            ? `${withdrawn} of those reps came from your bank — banked reps count toward the target.`
+            : "",
+          rule,
+        ];
+      case "rest":
+        return [
+          `You were ${short} rep${short === 1 ? "" : "s"} short of ${target}, so this day did not count.`,
+          "It used your forgiveness slot for that 7-day window, so the streak stayed alive but grew by 0.",
+          rule,
+        ];
+      case "break":
+        return [
+          `You logged ${total} of ${target} reps, missing the target.`,
+          "The forgiveness slot for that 7-day window was already used, so the streak reset here and started counting again after this day.",
+          rule,
+        ];
+      case "recovery":
+        return [
+          "This is your planned weekly recovery day: the target is 0, so nothing was required.",
+          "Recovery days never count as misses and never consume your forgiveness slot — the streak carries straight through.",
+        ];
+      case "pending":
+        return [
+          `Today is still open: ${total} of ${target} reps logged${short > 0 ? `, ${short} to go` : ""}.`,
+          "Today can never break the streak. Hit the target and it becomes a counted day.",
+          typeof restDaysLeft === "number"
+            ? `Forgiveness left in this window: ${restDaysLeft} of ${restAllowance}.`
+            : "",
+        ];
+      default:
+        return ["This day sits outside your logging history, so it has no effect on your streak."];
+    }
+  })().filter(Boolean);
 
   return (
     <Sheet open={!!date} onOpenChange={onOpenChange}>
@@ -140,6 +192,19 @@ export function DayDetailsSheet({ date, status, inCurrentStreak, onOpenChange, o
                 {deposited > 0 ? `${deposited} banked for later` : ""}
               </p>
             ) : null}
+          </div>
+
+          <div className="rounded-2xl border border-border p-4">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Streak impact
+            </p>
+            <ul className="mt-2 space-y-1.5">
+              {streakLines.map((line) => (
+                <li key={line} className="text-xs leading-relaxed text-foreground">
+                  {line}
+                </li>
+              ))}
+            </ul>
           </div>
 
           {isPending ? (

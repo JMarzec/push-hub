@@ -139,6 +139,8 @@ export function StreakBreakdown({
         date={selectedDate}
         status={selectedDay?.status ?? "none"}
         inCurrentStreak={selectedDay?.inCurrentStreak ?? false}
+        restAllowance={restAllowance}
+        restDaysLeft={restDaysLeft}
         onOpenChange={(isOpen) => {
           if (!isOpen) setSelectedDate(null);
         }}
