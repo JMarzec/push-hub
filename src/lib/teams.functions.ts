@@ -63,7 +63,7 @@ export const getMyTeam = createServerFn({ method: "POST" })
     // Roster + teammate stats need to read other members' rows, so they run
     // through trusted server code after membership above is confirmed.
     const { fetchTeamStats } = await import("./teams.server");
-    const members = await fetchTeamStats(team.id, team.shared_target);
+    const members = await fetchTeamStats(team.id, team.shared_target, data.today);
 
     return {
       team: {
