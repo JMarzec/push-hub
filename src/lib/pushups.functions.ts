@@ -115,13 +115,21 @@ export const getToday = createServerFn({ method: "POST" })
     let bank = 0;
     let depositedToday = 0;
     let withdrawnToday = 0;
+    // Withdrawals count towards the day they're used on, deposits are moved out
+    // of it — same net rule the ring and the squad total apply.
+    const netBankByDate: Record<string, number> = {};
     for (const entry of bankEntries) {
       const signed = entry.kind === "deposit" ? entry.reps : -entry.reps;
       bank += signed;
+      netBankByDate[entry.entry_date] = (netBankByDate[entry.entry_date] ?? 0) - signed;
       if (entry.entry_date === data.today) {
         if (entry.kind === "deposit") depositedToday += entry.reps;
         else withdrawnToday += entry.reps;
       }
+    }
+    for (const [date, net] of Object.entries(netBankByDate)) {
+      if (date < sinceDate) continue;
+      repsByDate[date] = Math.max((repsByDate[date] ?? 0) + net, 0);
     }
 
     // Streak: use the same gap-tolerant rules as the Trophies screen.
