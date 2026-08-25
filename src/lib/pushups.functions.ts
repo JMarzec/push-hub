@@ -450,7 +450,11 @@ export const getDayLogs = createServerFn({ method: "POST" })
     return {
       date: data.date,
       dailyTarget: settingsRes.data?.daily_target ?? 50,
-      totalReps: logs.reduce((sum, l) => sum + l.reps, 0),
+      // Net of bank movements, so the sheet matches the ring and the streak rules.
+      totalReps: Math.max(
+        logs.reduce((sum, l) => sum + l.reps, 0) + withdrawn - deposited,
+        0,
+      ),
       deposited,
       withdrawn,
       logs: logs.map((l) => ({
