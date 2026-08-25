@@ -115,13 +115,21 @@ export const getToday = createServerFn({ method: "POST" })
     let bank = 0;
     let depositedToday = 0;
     let withdrawnToday = 0;
+    // Withdrawals count towards the day they're used on, deposits are moved out
+    // of it — same net rule the ring and the squad total apply.
+    const netBankByDate: Record<string, number> = {};
     for (const entry of bankEntries) {
       const signed = entry.kind === "deposit" ? entry.reps : -entry.reps;
       bank += signed;
+      netBankByDate[entry.entry_date] = (netBankByDate[entry.entry_date] ?? 0) - signed;
       if (entry.entry_date === data.today) {
         if (entry.kind === "deposit") depositedToday += entry.reps;
         else withdrawnToday += entry.reps;
       }
+    }
+    for (const [date, net] of Object.entries(netBankByDate)) {
+      if (date < sinceDate) continue;
+      repsByDate[date] = Math.max((repsByDate[date] ?? 0) + net, 0);
     }
 
     // Streak: use the same gap-tolerant rules as the Trophies screen.
@@ -342,7 +350,7 @@ export const getStats = createServerFn({ method: "POST" })
         .eq("user_id", userId)
         .maybeSingle(),
       supabase.from("pushup_logs").select("reps, log_date").eq("user_id", userId),
-      supabase.from("bank_entries").select("reps, kind").eq("user_id", userId),
+      supabase.from("bank_entries").select("reps, kind, entry_date").eq("user_id", userId),
       supabase.from("team_members").select("team_id").eq("user_id", userId).limit(1),
     ]);
     if (logsRes.error) throw new Error(logsRes.error.message);
@@ -355,6 +363,12 @@ export const getStats = createServerFn({ method: "POST" })
     for (const log of logsRes.data ?? []) {
       repsByDate[log.log_date] = (repsByDate[log.log_date] ?? 0) + log.reps;
       totalReps += log.reps;
+    }
+
+    // Banked reps used on a day count towards that day (and deposits move out of it).
+    for (const entry of bankRes.data ?? []) {
+      const net = entry.kind === "deposit" ? -entry.reps : entry.reps;
+      repsByDate[entry.entry_date] = Math.max((repsByDate[entry.entry_date] ?? 0) + net, 0);
     }
 
     const dates = Object.keys(repsByDate).sort();
@@ -436,7 +450,11 @@ export const getDayLogs = createServerFn({ method: "POST" })
     return {
       date: data.date,
       dailyTarget: settingsRes.data?.daily_target ?? 50,
-      totalReps: logs.reduce((sum, l) => sum + l.reps, 0),
+      // Net of bank movements, so the sheet matches the ring and the streak rules.
+      totalReps: Math.max(
+        logs.reduce((sum, l) => sum + l.reps, 0) + withdrawn - deposited,
+        0,
+      ),
       deposited,
       withdrawn,
       logs: logs.map((l) => ({
