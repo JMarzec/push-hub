@@ -350,7 +350,7 @@ export const getStats = createServerFn({ method: "POST" })
         .eq("user_id", userId)
         .maybeSingle(),
       supabase.from("pushup_logs").select("reps, log_date").eq("user_id", userId),
-      supabase.from("bank_entries").select("reps, kind").eq("user_id", userId),
+      supabase.from("bank_entries").select("reps, kind, entry_date").eq("user_id", userId),
       supabase.from("team_members").select("team_id").eq("user_id", userId).limit(1),
     ]);
     if (logsRes.error) throw new Error(logsRes.error.message);
@@ -363,6 +363,12 @@ export const getStats = createServerFn({ method: "POST" })
     for (const log of logsRes.data ?? []) {
       repsByDate[log.log_date] = (repsByDate[log.log_date] ?? 0) + log.reps;
       totalReps += log.reps;
+    }
+
+    // Banked reps used on a day count towards that day (and deposits move out of it).
+    for (const entry of bankRes.data ?? []) {
+      const net = entry.kind === "deposit" ? -entry.reps : entry.reps;
+      repsByDate[entry.entry_date] = Math.max((repsByDate[entry.entry_date] ?? 0) + net, 0);
     }
 
     const dates = Object.keys(repsByDate).sort();
