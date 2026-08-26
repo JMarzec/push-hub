@@ -271,7 +271,10 @@ export type Database = {
           created_at: string
           daily_target: number
           disclaimer_accepted_at: string | null
+          email_reminders_enabled: boolean
+          email_reminders_paused_until: string | null
           frequency: number
+          last_nudge_email_at: string | null
           onboarding_completed_at: string | null
           parq_passed: boolean
           reminders_enabled: boolean
@@ -287,7 +290,10 @@ export type Database = {
           created_at?: string
           daily_target?: number
           disclaimer_accepted_at?: string | null
+          email_reminders_enabled?: boolean
+          email_reminders_paused_until?: string | null
           frequency?: number
+          last_nudge_email_at?: string | null
           onboarding_completed_at?: string | null
           parq_passed?: boolean
           reminders_enabled?: boolean
@@ -303,7 +309,10 @@ export type Database = {
           created_at?: string
           daily_target?: number
           disclaimer_accepted_at?: string | null
+          email_reminders_enabled?: boolean
+          email_reminders_paused_until?: string | null
           frequency?: number
+          last_nudge_email_at?: string | null
           onboarding_completed_at?: string | null
           parq_passed?: boolean
           reminders_enabled?: boolean
