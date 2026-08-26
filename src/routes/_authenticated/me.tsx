@@ -13,6 +13,7 @@ import { Bell, CalendarClock, Flame, Info, LogOut, Repeat, Sliders, Trophy, User
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { TabBar } from "@/components/pushup/TabBar";
 import { TargetSheet } from "@/components/pushup/TargetSheet";
 import { WEEKDAY_LABELS } from "@/lib/streaks";
@@ -24,10 +25,17 @@ import { getProfile, removeAvatar, setAvatar, updateProfile } from "@/lib/profil
 import {
   getStats,
   getToday,
+  updateEmailReminderSettings,
   updateReminderSettings,
   updateTargetSettings,
 } from "@/lib/pushups.functions";
 import { getMyTeam, leaveTeam } from "@/lib/teams.functions";
+
+function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 function localToday(): string {
   const now = new Date();
@@ -135,6 +143,15 @@ function Me() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const emailReminderMutation = useMutation({
+    mutationFn: useServerFn(updateEmailReminderSettings),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["today"] });
+      toast.success("Email nudge settings saved.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const targetMutation = useMutation({
     mutationFn: useServerFn(updateTargetSettings),
     onSuccess: () => {
@@ -160,6 +177,9 @@ function Me() {
   const team = teamQuery.data?.team ?? null;
   const slotTimes = settings?.slotTimes ?? ["08:00", "12:00", "17:00", "21:00"];
   const remindersEnabled = settings?.remindersEnabled ?? false;
+  const emailRemindersEnabled = settings?.emailRemindersEnabled ?? true;
+  const emailPausedUntil = settings?.emailRemindersPausedUntil ?? null;
+  const emailPauseActive = !!emailPausedUntil && emailPausedUntil > today;
   const loggedToday = Object.values(
     (settingsQuery.data?.repsBySlot ?? {}) as Record<string, number>,
   ).reduce((sum, n) => sum + n, 0);
@@ -360,6 +380,67 @@ function Me() {
             </Link>
           </Button>
 
+          <div className="mt-4 border-t border-border pt-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-foreground">Weekly email nudge</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  A friendly email if you haven't logged a push-up for a week or more.
+                </p>
+              </div>
+              <Switch
+                checked={emailRemindersEnabled}
+                aria-label="Enable weekly email nudge"
+                onCheckedChange={(next) =>
+                  emailReminderMutation.mutate({ data: { enabled: next } })
+                }
+              />
+            </div>
+            {emailRemindersEnabled ? (
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground">
+                  {emailPauseActive
+                    ? `Paused until ${emailPausedUntil}.`
+                    : "Not paused — nudges can arrive."}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full font-bold"
+                    onClick={() =>
+                      emailReminderMutation.mutate({ data: { pausedUntil: addDays(today, 7) } })
+                    }
+                  >
+                    Pause 1 week
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full font-bold"
+                    onClick={() =>
+                      emailReminderMutation.mutate({ data: { pausedUntil: addDays(today, 30) } })
+                    }
+                  >
+                    Pause 1 month
+                  </Button>
+                  {emailPauseActive ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="rounded-full font-bold"
+                      onClick={() => emailReminderMutation.mutate({ data: { pausedUntil: null } })}
+                    >
+                      Resume now
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+            <p className="mt-3 text-xs text-muted-foreground">
+              Every nudge also has a one-click unsubscribe link at the bottom.
+            </p>
+          </div>
         </section>
 
         <section className="mt-4 rounded-2xl border border-border bg-card p-4" aria-labelledby="planner-heading">
