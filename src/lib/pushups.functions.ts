@@ -516,3 +516,31 @@ export const updateReminderSettings = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * Email nudge preferences: a master on/off switch plus an optional "pause until"
+ * date so members can mute the weekly email while on holiday.
+ */
+export const updateEmailReminderSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        enabled: z.boolean().optional(),
+        pausedUntil: dateSchema.nullable().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const patch: { email_reminders_enabled?: boolean; email_reminders_paused_until?: string | null } =
+      {};
+    if (data.enabled !== undefined) patch.email_reminders_enabled = data.enabled;
+    if (data.pausedUntil !== undefined) patch.email_reminders_paused_until = data.pausedUntil;
+    if (Object.keys(patch).length === 0) return { ok: true };
+    const { error } = await context.supabase
+      .from("user_settings")
+      .update(patch)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
