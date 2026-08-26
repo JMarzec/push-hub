@@ -167,6 +167,8 @@ export const getToday = createServerFn({ method: "POST" })
         disclaimerAcceptedAt: settings.disclaimer_accepted_at,
         onboardingCompletedAt: settings.onboarding_completed_at,
         remindersEnabled: settings.reminders_enabled,
+        emailRemindersEnabled: settings.email_reminders_enabled ?? true,
+        emailRemindersPausedUntil: settings.email_reminders_paused_until ?? null,
         restDayOfWeek,
         isRecoveryDay,
         targetSource,
