@@ -360,6 +360,67 @@ function Me() {
             </Link>
           </Button>
 
+          <div className="mt-4 border-t border-border pt-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-foreground">Weekly email nudge</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  A friendly email if you haven't logged a push-up for a week or more.
+                </p>
+              </div>
+              <Switch
+                checked={emailRemindersEnabled}
+                aria-label="Enable weekly email nudge"
+                onCheckedChange={(next) =>
+                  emailReminderMutation.mutate({ data: { enabled: next } })
+                }
+              />
+            </div>
+            {emailRemindersEnabled ? (
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground">
+                  {emailPauseActive
+                    ? `Paused until ${emailPausedUntil}.`
+                    : "Not paused — nudges can arrive."}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full font-bold"
+                    onClick={() =>
+                      emailReminderMutation.mutate({ data: { pausedUntil: addDays(today, 7) } })
+                    }
+                  >
+                    Pause 1 week
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full font-bold"
+                    onClick={() =>
+                      emailReminderMutation.mutate({ data: { pausedUntil: addDays(today, 30) } })
+                    }
+                  >
+                    Pause 1 month
+                  </Button>
+                  {emailPauseActive ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="rounded-full font-bold"
+                      onClick={() => emailReminderMutation.mutate({ data: { pausedUntil: null } })}
+                    >
+                      Resume now
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+            <p className="mt-3 text-xs text-muted-foreground">
+              Every nudge also has a one-click unsubscribe link at the bottom.
+            </p>
+          </div>
         </section>
 
         <section className="mt-4 rounded-2xl border border-border bg-card p-4" aria-labelledby="planner-heading">
