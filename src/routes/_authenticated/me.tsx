@@ -83,6 +83,10 @@ function Me() {
   const [targetOpen, setTargetOpen] = useState(false);
   const [remindersOpen, setRemindersOpen] = useState(false);
 
+  // Email reminders are inactive until the project has a sender domain configured.
+  // Flip this to true once the domain is set up in Lovable Cloud.
+  const emailDomainConfigured = false;
+
   const { data: profile } = useSuspenseQuery(profileQueryOptions());
 
   const statsQuery = useQuery({
@@ -381,9 +385,26 @@ function Me() {
           </Button>
 
           <div className="mt-4 border-t border-border pt-4">
+            {!emailDomainConfigured ? (
+              <div className="mb-3 rounded-xl border border-border bg-muted p-3">
+                <p className="flex gap-2 text-xs text-muted-foreground">
+                  <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                  <span>
+                    Email nudges are not active yet. No sender domain is configured, so no emails will be sent. Your preference is saved and will be used once your domain is ready.
+                  </span>
+                </p>
+              </div>
+            ) : null}
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-bold text-foreground">Weekly email nudge</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold text-foreground">Weekly email nudge</p>
+                  {!emailDomainConfigured ? (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                      Not active
+                    </span>
+                  ) : null}
+                </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   A friendly email if you haven't logged a push-up for a week or more.
                 </p>
@@ -391,6 +412,7 @@ function Me() {
               <Switch
                 checked={emailRemindersEnabled}
                 aria-label="Enable weekly email nudge"
+                disabled={!emailDomainConfigured}
                 onCheckedChange={(next) =>
                   emailReminderMutation.mutate({ data: { enabled: next } })
                 }
@@ -408,6 +430,7 @@ function Me() {
                     size="sm"
                     variant="outline"
                     className="rounded-full font-bold"
+                    disabled={!emailDomainConfigured}
                     onClick={() =>
                       emailReminderMutation.mutate({ data: { pausedUntil: addDays(today, 7) } })
                     }
@@ -418,6 +441,7 @@ function Me() {
                     size="sm"
                     variant="outline"
                     className="rounded-full font-bold"
+                    disabled={!emailDomainConfigured}
                     onClick={() =>
                       emailReminderMutation.mutate({ data: { pausedUntil: addDays(today, 30) } })
                     }
@@ -429,6 +453,7 @@ function Me() {
                       size="sm"
                       variant="ghost"
                       className="rounded-full font-bold"
+                      disabled={!emailDomainConfigured}
                       onClick={() => emailReminderMutation.mutate({ data: { pausedUntil: null } })}
                     >
                       Resume now
