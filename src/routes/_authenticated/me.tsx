@@ -389,9 +389,7 @@ function Me() {
               <div className="mb-3 rounded-xl border border-border bg-muted p-3">
                 <p className="flex gap-2 text-xs text-muted-foreground">
                   <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                  <span>
-                    Email nudges are not active yet. No sender domain is configured, so no emails will be sent. Your preference is saved and will be used once your domain is ready.
-                  </span>
+                  <span>Email nudges are not active yet.</span>
                 </p>
               </div>
             ) : null}
