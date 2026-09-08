@@ -27,6 +27,7 @@ export function DayStrip({ days, current, completed }: DayStripProps) {
         return (
           <div
             key={day}
+            ref={isCurrent ? currentRef : undefined}
             role="listitem"
             aria-label={`Day ${day}${isDone ? ", completed" : isCurrent ? ", today" : ""}`}
             className={cn(
