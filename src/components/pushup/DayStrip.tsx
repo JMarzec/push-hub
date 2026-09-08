@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +9,12 @@ export interface DayStripProps {
 }
 
 export function DayStrip({ days, current, completed }: DayStripProps) {
+  const currentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    currentRef.current?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [current, days]);
+
   return (
     <div
       className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -20,6 +27,7 @@ export function DayStrip({ days, current, completed }: DayStripProps) {
         return (
           <div
             key={day}
+            ref={isCurrent ? currentRef : undefined}
             role="listitem"
             aria-label={`Day ${day}${isDone ? ", completed" : isCurrent ? ", today" : ""}`}
             className={cn(

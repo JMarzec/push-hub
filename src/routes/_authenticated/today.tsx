@@ -356,8 +356,8 @@ function Today() {
       <main className="mx-auto -mt-4 w-full max-w-md flex-1 px-5 pb-8">
         <section className="rounded-3xl bg-card p-5 shadow-[var(--shadow-ring)]">
           <DayStrip
-            days={CHALLENGE_DAYS}
-            current={Math.min(data.dayNumber, CHALLENGE_DAYS)}
+            days={Math.max(CHALLENGE_DAYS, data.dayNumber)}
+            current={data.dayNumber}
             completed={data.completedDays}
           />
 
