@@ -109,7 +109,17 @@ export async function fetchTeamStats(
   const restDayById = new Map(
     (settings.data ?? []).map((s) => [s.user_id, s.rest_day_of_week ?? null]),
   );
-  const todayWeekday = new Date(`${today}T00:00:00Z`).getUTCDay();
+  const todayWeekday = new Date(`${utcToday}T00:00:00Z`).getUTCDay();
+
+  // Per-day reps for the last 30 days power the monthly squad chart.
+  const monthByMember = new Map<string, Map<string, number>>();
+  for (const id of memberIds) monthByMember.set(id, new Map());
+  const addMonth = (userId: string, date: string, reps: number) => {
+    if (date < monthStart || date > today) return;
+    const day = monthByMember.get(userId);
+    if (!day) return;
+    day.set(date, (day.get(date) ?? 0) + reps);
+  };
 
   const totals = new Map<string, { today: number; twoDays: number; week: number; all: number }>();
   for (const id of memberIds) totals.set(id, { today: 0, twoDays: 0, week: 0, all: 0 });
@@ -120,6 +130,7 @@ export async function fetchTeamStats(
     if (log.log_date >= weekAgo && log.log_date <= today) bucket.week += log.reps;
     if (log.log_date >= yesterday && log.log_date <= today) bucket.twoDays += log.reps;
     if (log.log_date === today) bucket.today += log.reps;
+    addMonth(log.user_id, log.log_date, log.reps);
   }
   // Withdrawals add banked reps to the day they were applied; deposits move
   // reps out of that day into the bank — for the 7-day board too, so reps spent
