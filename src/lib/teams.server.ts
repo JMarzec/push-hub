@@ -175,6 +175,7 @@ export async function fetchTeamStats(
       let currentStreak = 0;
       for (let i = monthDays.length - 1; i >= 0; i -= 1) {
         const day = monthDays[i];
+        if (!day) break;
         if (i === monthDays.length - 1 && !day.hit) continue;
         if (!day.hit) break;
         if (!day.rest) currentStreak += 1;
