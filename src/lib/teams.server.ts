@@ -107,13 +107,14 @@ export async function fetchTeamStats(
   );
   const todayWeekday = new Date(`${today}T00:00:00Z`).getUTCDay();
 
-  const totals = new Map<string, { today: number; week: number; all: number }>();
-  for (const id of memberIds) totals.set(id, { today: 0, week: 0, all: 0 });
+  const totals = new Map<string, { today: number; twoDays: number; week: number; all: number }>();
+  for (const id of memberIds) totals.set(id, { today: 0, twoDays: 0, week: 0, all: 0 });
   for (const log of logs.data ?? []) {
     const bucket = totals.get(log.user_id);
     if (!bucket) continue;
     bucket.all += log.reps;
     if (log.log_date >= weekAgo && log.log_date <= today) bucket.week += log.reps;
+    if (log.log_date >= yesterday && log.log_date <= today) bucket.twoDays += log.reps;
     if (log.log_date === today) bucket.today += log.reps;
   }
   // Withdrawals add banked reps to the day they were applied; deposits move
