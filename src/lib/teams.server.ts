@@ -192,6 +192,10 @@ export async function fetchTeamStats(
         repsWeek: bucket.week,
         repsTotal: bucket.all,
         avatarUrl: avatarById.get(member.user_id) ?? null,
+        monthDays,
+        monthTotal,
+        currentStreak,
+        recoveryDaysInMonth,
       };
     })
     .sort((a, b) => b.repsToday - a.repsToday);
