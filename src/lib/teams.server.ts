@@ -67,6 +67,10 @@ export async function fetchTeamStats(
   const todayMs = Date.parse(`${today}T00:00:00Z`);
   const weekAgo = new Date(todayMs - 6 * 86_400_000).toISOString().slice(0, 10);
   const yesterday = new Date(todayMs - 86_400_000).toISOString().slice(0, 10);
+  const monthStart = new Date(todayMs - 29 * 86_400_000).toISOString().slice(0, 10);
+  // Targets and recovery days follow UTC so every member of the squad agrees on
+  // which calendar day (and weekday) is being counted, wherever they live.
+  const utcToday = new Date().toISOString().slice(0, 10);
 
   const [profiles, settings, logs, bank] = await Promise.all([
     supabaseAdmin.from("profiles").select("id, display_name, avatar_url").in("id", memberIds),
