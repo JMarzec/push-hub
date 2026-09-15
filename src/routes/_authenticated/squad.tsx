@@ -10,6 +10,7 @@ import { ProgressRing } from "@/components/pushup/ProgressRing";
 import { TabBar } from "@/components/pushup/TabBar";
 import { InviteSheet } from "@/components/pushup/InviteSheet";
 import { SharedTargetCard } from "@/components/pushup/SharedTargetCard";
+import { SquadMonthChart } from "@/components/pushup/SquadMonthChart";
 import {
   createTeam,
   getMyTeam,
