@@ -269,6 +269,7 @@ function Squad() {
               Leaderboard
             </h2>
             <div className="flex gap-1 rounded-full bg-secondary p-1">
+
               {(["today", "twoDays", "week", "all"] as Board[]).map((key) => (
                 <button
                   key={key}
