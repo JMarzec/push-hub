@@ -24,8 +24,21 @@ export interface TeamMemberStat {
   repsTotal: number;
   avatarUrl: string | null;
   followsShared: boolean;
-  /** True when today is this member's chosen weekly recovery day. */
+  /** True when today is this member's chosen weekly recovery day (UTC). */
   onRecoveryDay: boolean;
+  /** Last 30 days, oldest first — powers the monthly squad chart. */
+  monthDays: MemberMonthDay[];
+  monthTotal: number;
+  currentStreak: number;
+  recoveryDaysInMonth: number;
+}
+
+export interface MemberMonthDay {
+  date: string;
+  reps: number;
+  target: number;
+  rest: boolean;
+  hit: boolean;
 }
 
 export const getMyTeam = createServerFn({ method: "POST" })

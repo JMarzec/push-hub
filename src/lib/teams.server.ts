@@ -67,6 +67,10 @@ export async function fetchTeamStats(
   const todayMs = Date.parse(`${today}T00:00:00Z`);
   const weekAgo = new Date(todayMs - 6 * 86_400_000).toISOString().slice(0, 10);
   const yesterday = new Date(todayMs - 86_400_000).toISOString().slice(0, 10);
+  const monthStart = new Date(todayMs - 29 * 86_400_000).toISOString().slice(0, 10);
+  // Targets and recovery days follow UTC so every member of the squad agrees on
+  // which calendar day (and weekday) is being counted, wherever they live.
+  const utcToday = new Date().toISOString().slice(0, 10);
 
   const [profiles, settings, logs, bank] = await Promise.all([
     supabaseAdmin.from("profiles").select("id, display_name, avatar_url").in("id", memberIds),
@@ -105,7 +109,17 @@ export async function fetchTeamStats(
   const restDayById = new Map(
     (settings.data ?? []).map((s) => [s.user_id, s.rest_day_of_week ?? null]),
   );
-  const todayWeekday = new Date(`${today}T00:00:00Z`).getUTCDay();
+  const todayWeekday = new Date(`${utcToday}T00:00:00Z`).getUTCDay();
+
+  // Per-day reps for the last 30 days power the monthly squad chart.
+  const monthByMember = new Map<string, Map<string, number>>();
+  for (const id of memberIds) monthByMember.set(id, new Map());
+  const addMonth = (userId: string, date: string, reps: number) => {
+    if (date < monthStart || date > today) return;
+    const day = monthByMember.get(userId);
+    if (!day) return;
+    day.set(date, (day.get(date) ?? 0) + reps);
+  };
 
   const totals = new Map<string, { today: number; twoDays: number; week: number; all: number }>();
   for (const id of memberIds) totals.set(id, { today: 0, twoDays: 0, week: 0, all: 0 });
@@ -116,6 +130,7 @@ export async function fetchTeamStats(
     if (log.log_date >= weekAgo && log.log_date <= today) bucket.week += log.reps;
     if (log.log_date >= yesterday && log.log_date <= today) bucket.twoDays += log.reps;
     if (log.log_date === today) bucket.today += log.reps;
+    addMonth(log.user_id, log.log_date, log.reps);
   }
   // Withdrawals add banked reps to the day they were applied; deposits move
   // reps out of that day into the bank — for the 7-day board too, so reps spent
@@ -127,6 +142,12 @@ export async function fetchTeamStats(
     if (entry.entry_date === today) bucket.today += signed;
     if (entry.entry_date >= yesterday && entry.entry_date <= today) bucket.twoDays += signed;
     if (entry.entry_date >= weekAgo && entry.entry_date <= today) bucket.week += signed;
+    addMonth(entry.user_id, entry.entry_date, signed);
+  }
+
+  const monthDates: string[] = [];
+  for (let i = 29; i >= 0; i -= 1) {
+    monthDates.push(new Date(todayMs - i * 86_400_000).toISOString().slice(0, 10));
   }
 
   return (roster ?? [])
@@ -138,7 +159,28 @@ export async function fetchTeamStats(
         : (targetById.get(member.user_id) ?? 50);
       // On a member's weekly recovery day they owe nothing, so the squad total
       // drops by their target instead of counting them as behind.
-      const onRecoveryDay = restDayById.get(member.user_id) === todayWeekday;
+      const restDay = restDayById.get(member.user_id) ?? null;
+      const onRecoveryDay = restDay === todayWeekday;
+
+      const perDay = monthByMember.get(member.user_id) ?? new Map<string, number>();
+      const monthDays = monthDates.map((date) => {
+        const rest = restDay !== null && new Date(`${date}T00:00:00Z`).getUTCDay() === restDay;
+        const target = rest ? 0 : baseTarget;
+        const reps = Math.max(perDay.get(date) ?? 0, 0);
+        return { date, reps, target, rest, hit: rest || reps >= target };
+      });
+      const monthTotal = monthDays.reduce((sum, d) => sum + d.reps, 0);
+      const recoveryDaysInMonth = monthDays.filter((d) => d.rest).length;
+      // Current streak: walk back from today, ignoring an unfinished today.
+      let currentStreak = 0;
+      for (let i = monthDays.length - 1; i >= 0; i -= 1) {
+        const day = monthDays[i];
+        if (!day) break;
+        if (i === monthDays.length - 1 && !day.hit) continue;
+        if (!day.hit) break;
+        if (!day.rest) currentStreak += 1;
+      }
+
       return {
         userId: member.user_id,
         displayName: nameById.get(member.user_id)?.trim() || "Member",
@@ -151,6 +193,10 @@ export async function fetchTeamStats(
         repsWeek: bucket.week,
         repsTotal: bucket.all,
         avatarUrl: avatarById.get(member.user_id) ?? null,
+        monthDays,
+        monthTotal,
+        currentStreak,
+        recoveryDaysInMonth,
       };
     })
     .sort((a, b) => b.repsToday - a.repsToday);

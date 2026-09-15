@@ -10,6 +10,7 @@ import { ProgressRing } from "@/components/pushup/ProgressRing";
 import { TabBar } from "@/components/pushup/TabBar";
 import { InviteSheet } from "@/components/pushup/InviteSheet";
 import { SharedTargetCard } from "@/components/pushup/SharedTargetCard";
+import { SquadMonthChart } from "@/components/pushup/SquadMonthChart";
 import {
   createTeam,
   getMyTeam,
@@ -263,6 +264,8 @@ function Squad() {
           }}
         />
 
+        {members.length > 0 ? <SquadMonthChart members={members} /> : null}
+
         <section aria-labelledby="roster-heading">
           <div className="mb-2 flex items-center justify-between">
             <h2 id="roster-heading" className="text-sm font-bold text-foreground">
@@ -293,8 +296,7 @@ function Squad() {
           </div>
           {board === "twoDays" ? (
             <p className="mb-2 text-xs text-muted-foreground">
-              Rolling 48 hours — so teammates in far-apart timezones (like Australia and Europe)
-              show up together.
+              Rolling 48 hours — so teammates in far-apart timezones show up together.
             </p>
           ) : null}
 
