@@ -142,6 +142,12 @@ export async function fetchTeamStats(
     if (entry.entry_date === today) bucket.today += signed;
     if (entry.entry_date >= yesterday && entry.entry_date <= today) bucket.twoDays += signed;
     if (entry.entry_date >= weekAgo && entry.entry_date <= today) bucket.week += signed;
+    addMonth(entry.user_id, entry.entry_date, signed);
+  }
+
+  const monthDates: string[] = [];
+  for (let i = 29; i >= 0; i -= 1) {
+    monthDates.push(new Date(todayMs - i * 86_400_000).toISOString().slice(0, 10));
   }
 
   return (roster ?? [])
@@ -153,7 +159,27 @@ export async function fetchTeamStats(
         : (targetById.get(member.user_id) ?? 50);
       // On a member's weekly recovery day they owe nothing, so the squad total
       // drops by their target instead of counting them as behind.
-      const onRecoveryDay = restDayById.get(member.user_id) === todayWeekday;
+      const restDay = restDayById.get(member.user_id) ?? null;
+      const onRecoveryDay = restDay === todayWeekday;
+
+      const perDay = monthByMember.get(member.user_id) ?? new Map<string, number>();
+      const monthDays = monthDates.map((date) => {
+        const rest = restDay !== null && new Date(`${date}T00:00:00Z`).getUTCDay() === restDay;
+        const target = rest ? 0 : baseTarget;
+        const reps = Math.max(perDay.get(date) ?? 0, 0);
+        return { date, reps, target, rest, hit: rest || reps >= target };
+      });
+      const monthTotal = monthDays.reduce((sum, d) => sum + d.reps, 0);
+      const recoveryDaysInMonth = monthDays.filter((d) => d.rest).length;
+      // Current streak: walk back from today, ignoring an unfinished today.
+      let currentStreak = 0;
+      for (let i = monthDays.length - 1; i >= 0; i -= 1) {
+        const day = monthDays[i];
+        if (i === monthDays.length - 1 && !day.hit) continue;
+        if (!day.hit) break;
+        if (!day.rest) currentStreak += 1;
+      }
+
       return {
         userId: member.user_id,
         displayName: nameById.get(member.user_id)?.trim() || "Member",
