@@ -269,7 +269,7 @@ function Squad() {
               Leaderboard
             </h2>
             <div className="flex gap-1 rounded-full bg-secondary p-1">
-              {(["today", "week", "all"] as Board[]).map((key) => (
+              {(["today", "twoDays", "week", "all"] as Board[]).map((key) => (
                 <button
                   key={key}
                   type="button"
@@ -279,7 +279,13 @@ function Squad() {
                     board === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                   }`}
                 >
-                  {key === "today" ? "Today" : key === "week" ? "7 days" : "All time"}
+                  {key === "today"
+                    ? "Today"
+                    : key === "twoDays"
+                      ? "2 days"
+                      : key === "week"
+                        ? "7 days"
+                        : "All time"}
                 </button>
               ))}
             </div>
