@@ -1,4 +1,106 @@
+import { useEffect, useRef } from "react";
 import type { TeamMemberStat } from "@/lib/teams.functions";
+
+type MonthDay = TeamMemberStat["monthDays"][number];
+
+function compactDate(date: string) {
+  const [, month, day] = date.split("-");
+  if (!month || !day) return date;
+  return `${Number(day)}/${Number(month)}`;
+}
+
+function MemberTimeline({
+  days,
+  displayName,
+  monthTotal,
+  currentStreak,
+  recoveryDays,
+  peak,
+}: {
+  days: MonthDay[];
+  displayName: string;
+  monthTotal: number;
+  currentStreak: number;
+  recoveryDays: number;
+  peak: number;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    scroller.scrollLeft = scroller.scrollWidth;
+  }, [days]);
+
+  return (
+    <div>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3">
+        <p className="min-w-0 truncate text-sm font-bold text-foreground">{displayName}</p>
+        <p className="shrink-0 text-xs text-muted-foreground tabular-nums">
+          {monthTotal.toLocaleString()} reps
+        </p>
+      </div>
+
+      <dl className="mt-2 grid gap-1 text-xs">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+          <dt className="text-muted-foreground">Current streak</dt>
+          <dd className="font-semibold text-foreground tabular-nums">{currentStreak} days</dd>
+        </div>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+          <dt className="text-muted-foreground">Recovery days</dt>
+          <dd className="font-semibold text-foreground tabular-nums">{recoveryDays}</dd>
+        </div>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+          <dt className="text-muted-foreground">Days on target</dt>
+          <dd className="font-semibold text-foreground tabular-nums">
+            {days.filter((day) => day.hit && !day.rest).length}
+          </dd>
+        </div>
+      </dl>
+
+      <div
+        ref={scrollRef}
+        className="mt-3 overflow-x-auto pb-1 [scrollbar-width:thin]"
+        aria-label={`${displayName} daily activity timeline. Swipe horizontally for earlier dates.`}
+      >
+        <div className="grid min-w-max grid-flow-col grid-cols-none gap-1" role="img">
+          {days.map((day, index) => {
+            const height = Math.max(3, Math.round((day.reps / peak) * 100));
+            const showDate = index === 0 || index === days.length - 1 || index % 5 === 0;
+            const dateLabel = compactDate(day.date);
+
+            return (
+              <div key={day.date} className="grid w-5 grid-rows-[3.5rem_1rem] gap-1">
+                <div className="flex items-end border-b border-border">
+                  <span
+                    title={`${day.date} — ${day.reps} reps${day.rest ? " (recovery day)" : ` of ${day.target}`}`}
+                    aria-label={`${dateLabel}: ${day.reps} reps${day.rest ? ", recovery day" : day.hit ? ", target met" : day.reps > 0 ? ", partial" : ", missed"}`}
+                    className={`w-full rounded-t-sm ${
+                      day.rest
+                        ? "bg-accent"
+                        : day.hit
+                          ? "bg-primary"
+                          : day.reps > 0
+                            ? "bg-primary/40"
+                            : "bg-secondary"
+                    }`}
+                    style={{ height: `${day.rest && day.reps === 0 ? 12 : height}%` }}
+                  />
+                </div>
+                <span
+                  className="whitespace-nowrap text-[9px] leading-4 text-muted-foreground tabular-nums"
+                  aria-hidden="true"
+                >
+                  {showDate ? dateLabel : ""}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * 30-day squad overview: one sparkline row per member showing daily reps,
@@ -27,60 +129,17 @@ export function SquadMonthChart({ members }: { members: TeamMemberStat[] }) {
         </p>
       </div>
 
-      <ul className="mt-4 space-y-4">
+      <ul className="mt-4 divide-y divide-border">
         {ranked.map((m) => (
-          <li key={m.userId}>
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="truncate text-sm font-bold text-foreground">{m.displayName}</p>
-              <p className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                {m.monthTotal.toLocaleString()} reps
-              </p>
-            </div>
-            <div
-              className="mt-1.5 flex h-14 items-end gap-[2px]"
-              role="img"
-              aria-label={`${m.displayName}: ${m.monthTotal} reps over the last 30 days, ${m.currentStreak} day streak, ${m.recoveryDaysInMonth} recovery days`}
-            >
-              {m.monthDays.map((d) => {
-                const height = Math.max(3, Math.round((d.reps / peak) * 100));
-                return (
-                  <span
-                    key={d.date}
-                    title={`${d.date} — ${d.reps} reps${d.rest ? " (recovery day)" : ` of ${d.target}`}`}
-                    className={`flex-1 rounded-t-sm ${
-                      d.rest
-                        ? "bg-accent"
-                        : d.hit
-                          ? "bg-primary"
-                          : d.reps > 0
-                            ? "bg-primary/40"
-                            : "bg-secondary"
-                    }`}
-                    style={{ height: `${d.rest && d.reps === 0 ? 12 : height}%` }}
-                  />
-                );
-              })}
-            </div>
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <span>
-                <span className="font-semibold tabular-nums text-foreground">
-                  {m.currentStreak}
-                </span>{" "}
-                day streak
-              </span>
-              <span>
-                <span className="font-semibold tabular-nums text-foreground">
-                  {m.recoveryDaysInMonth}
-                </span>{" "}
-                recovery days
-              </span>
-              <span>
-                <span className="font-semibold tabular-nums text-foreground">
-                  {m.monthDays.filter((d) => d.hit && !d.rest).length}
-                </span>{" "}
-                days on target
-              </span>
-            </p>
+          <li key={m.userId} className="py-4 first:pt-0 last:pb-0">
+            <MemberTimeline
+              days={m.monthDays}
+              displayName={m.displayName}
+              monthTotal={m.monthTotal}
+              currentStreak={m.currentStreak}
+              recoveryDays={m.recoveryDaysInMonth}
+              peak={peak}
+            />
           </li>
         ))}
       </ul>
