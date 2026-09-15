@@ -291,6 +291,12 @@ function Squad() {
               ))}
             </div>
           </div>
+          {board === "twoDays" ? (
+            <p className="mb-2 text-xs text-muted-foreground">
+              Rolling 48 hours — so teammates in far-apart timezones (like Australia and Europe)
+              show up together.
+            </p>
+          ) : null}
 
           <ul className="space-y-2">
             {ranked.map((m, i) => {
