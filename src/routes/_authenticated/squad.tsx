@@ -64,7 +64,7 @@ export const Route = createFileRoute("/_authenticated/squad")({
   component: Squad,
 });
 
-type Board = "today" | "week" | "all";
+type Board = "today" | "twoDays" | "week" | "all";
 
 function Squad() {
   const { user } = Route.useRouteContext();
@@ -106,13 +106,21 @@ function Squad() {
   const ranked = [...members].sort((a, b) =>
     board === "today"
       ? b.repsToday - a.repsToday
-      : board === "week"
-        ? b.repsWeek - a.repsWeek
-        : b.repsTotal - a.repsTotal,
+      : board === "twoDays"
+        ? b.repsTwoDays - a.repsTwoDays
+        : board === "week"
+          ? b.repsWeek - a.repsWeek
+          : b.repsTotal - a.repsTotal,
   );
 
   function valueFor(m: (typeof members)[number]) {
-    return board === "today" ? m.repsToday : board === "week" ? m.repsWeek : m.repsTotal;
+    return board === "today"
+      ? m.repsToday
+      : board === "twoDays"
+        ? m.repsTwoDays
+        : board === "week"
+          ? m.repsWeek
+          : m.repsTotal;
   }
 
   if (!team) {
