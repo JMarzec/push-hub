@@ -64,7 +64,7 @@ export const Route = createFileRoute("/_authenticated/squad")({
   component: Squad,
 });
 
-type Board = "today" | "week" | "all";
+type Board = "today" | "twoDays" | "week" | "all";
 
 function Squad() {
   const { user } = Route.useRouteContext();
@@ -106,13 +106,21 @@ function Squad() {
   const ranked = [...members].sort((a, b) =>
     board === "today"
       ? b.repsToday - a.repsToday
-      : board === "week"
-        ? b.repsWeek - a.repsWeek
-        : b.repsTotal - a.repsTotal,
+      : board === "twoDays"
+        ? b.repsTwoDays - a.repsTwoDays
+        : board === "week"
+          ? b.repsWeek - a.repsWeek
+          : b.repsTotal - a.repsTotal,
   );
 
   function valueFor(m: (typeof members)[number]) {
-    return board === "today" ? m.repsToday : board === "week" ? m.repsWeek : m.repsTotal;
+    return board === "today"
+      ? m.repsToday
+      : board === "twoDays"
+        ? m.repsTwoDays
+        : board === "week"
+          ? m.repsWeek
+          : m.repsTotal;
   }
 
   if (!team) {
@@ -261,7 +269,8 @@ function Squad() {
               Leaderboard
             </h2>
             <div className="flex gap-1 rounded-full bg-secondary p-1">
-              {(["today", "week", "all"] as Board[]).map((key) => (
+
+              {(["today", "twoDays", "week", "all"] as Board[]).map((key) => (
                 <button
                   key={key}
                   type="button"
@@ -271,11 +280,23 @@ function Squad() {
                     board === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                   }`}
                 >
-                  {key === "today" ? "Today" : key === "week" ? "7 days" : "All time"}
+                  {key === "today"
+                    ? "Today"
+                    : key === "twoDays"
+                      ? "2 days"
+                      : key === "week"
+                        ? "7 days"
+                        : "All time"}
                 </button>
               ))}
             </div>
           </div>
+          {board === "twoDays" ? (
+            <p className="mb-2 text-xs text-muted-foreground">
+              Rolling 48 hours — so teammates in far-apart timezones (like Australia and Europe)
+              show up together.
+            </p>
+          ) : null}
 
           <ul className="space-y-2">
             {ranked.map((m, i) => {

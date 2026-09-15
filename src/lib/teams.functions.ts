@@ -17,6 +17,8 @@ export interface TeamMemberStat {
   displayName: string;
   role: string;
   repsToday: number;
+  /** Reps over the viewer's last two local days — covers teammates in far-apart timezones. */
+  repsTwoDays: number;
   dailyTarget: number;
   repsWeek: number;
   repsTotal: number;

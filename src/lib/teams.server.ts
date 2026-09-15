@@ -66,6 +66,7 @@ export async function fetchTeamStats(
   const today = viewerToday ?? new Date().toISOString().slice(0, 10);
   const todayMs = Date.parse(`${today}T00:00:00Z`);
   const weekAgo = new Date(todayMs - 6 * 86_400_000).toISOString().slice(0, 10);
+  const yesterday = new Date(todayMs - 86_400_000).toISOString().slice(0, 10);
 
   const [profiles, settings, logs, bank] = await Promise.all([
     supabaseAdmin.from("profiles").select("id, display_name, avatar_url").in("id", memberIds),
@@ -106,13 +107,14 @@ export async function fetchTeamStats(
   );
   const todayWeekday = new Date(`${today}T00:00:00Z`).getUTCDay();
 
-  const totals = new Map<string, { today: number; week: number; all: number }>();
-  for (const id of memberIds) totals.set(id, { today: 0, week: 0, all: 0 });
+  const totals = new Map<string, { today: number; twoDays: number; week: number; all: number }>();
+  for (const id of memberIds) totals.set(id, { today: 0, twoDays: 0, week: 0, all: 0 });
   for (const log of logs.data ?? []) {
     const bucket = totals.get(log.user_id);
     if (!bucket) continue;
     bucket.all += log.reps;
     if (log.log_date >= weekAgo && log.log_date <= today) bucket.week += log.reps;
+    if (log.log_date >= yesterday && log.log_date <= today) bucket.twoDays += log.reps;
     if (log.log_date === today) bucket.today += log.reps;
   }
   // Withdrawals add banked reps to the day they were applied; deposits move
@@ -123,12 +125,13 @@ export async function fetchTeamStats(
     if (!bucket) continue;
     const signed = entry.kind === "withdrawal" ? entry.reps : -entry.reps;
     if (entry.entry_date === today) bucket.today += signed;
+    if (entry.entry_date >= yesterday && entry.entry_date <= today) bucket.twoDays += signed;
     if (entry.entry_date >= weekAgo && entry.entry_date <= today) bucket.week += signed;
   }
 
   return (roster ?? [])
     .map((member) => {
-      const bucket = totals.get(member.user_id) ?? { today: 0, week: 0, all: 0 };
+      const bucket = totals.get(member.user_id) ?? { today: 0, twoDays: 0, week: 0, all: 0 };
       const followsShared = Boolean(member.follow_shared_target) && sharedTarget !== null;
       const baseTarget = followsShared
         ? (sharedTarget as number)
@@ -141,6 +144,7 @@ export async function fetchTeamStats(
         displayName: nameById.get(member.user_id)?.trim() || "Member",
         role: member.role,
         repsToday: bucket.today,
+        repsTwoDays: bucket.twoDays,
         dailyTarget: onRecoveryDay ? 0 : baseTarget,
         followsShared,
         onRecoveryDay,
