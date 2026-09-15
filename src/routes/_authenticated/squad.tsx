@@ -264,8 +264,6 @@ function Squad() {
           }}
         />
 
-        {members.length > 0 ? <SquadMonthChart members={members} /> : null}
-
         <section aria-labelledby="roster-heading">
           <div className="mb-2 flex items-center justify-between">
             <h2 id="roster-heading" className="text-sm font-bold text-foreground">
@@ -384,6 +382,9 @@ function Squad() {
             })}
           </ul>
         </section>
+
+        {members.length > 0 ? <SquadMonthChart members={members} /> : null}
+
 
         <Button
           variant="ghost"
