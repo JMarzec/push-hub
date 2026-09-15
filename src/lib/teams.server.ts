@@ -125,12 +125,13 @@ export async function fetchTeamStats(
     if (!bucket) continue;
     const signed = entry.kind === "withdrawal" ? entry.reps : -entry.reps;
     if (entry.entry_date === today) bucket.today += signed;
+    if (entry.entry_date >= yesterday && entry.entry_date <= today) bucket.twoDays += signed;
     if (entry.entry_date >= weekAgo && entry.entry_date <= today) bucket.week += signed;
   }
 
   return (roster ?? [])
     .map((member) => {
-      const bucket = totals.get(member.user_id) ?? { today: 0, week: 0, all: 0 };
+      const bucket = totals.get(member.user_id) ?? { today: 0, twoDays: 0, week: 0, all: 0 };
       const followsShared = Boolean(member.follow_shared_target) && sharedTarget !== null;
       const baseTarget = followsShared
         ? (sharedTarget as number)
