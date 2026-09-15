@@ -144,6 +144,7 @@ export async function fetchTeamStats(
         displayName: nameById.get(member.user_id)?.trim() || "Member",
         role: member.role,
         repsToday: bucket.today,
+        repsTwoDays: bucket.twoDays,
         dailyTarget: onRecoveryDay ? 0 : baseTarget,
         followsShared,
         onRecoveryDay,
