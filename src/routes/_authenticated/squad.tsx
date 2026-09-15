@@ -293,8 +293,7 @@ function Squad() {
           </div>
           {board === "twoDays" ? (
             <p className="mb-2 text-xs text-muted-foreground">
-              Rolling 48 hours — so teammates in far-apart timezones (like Australia and Europe)
-              show up together.
+              Rolling 48 hours — so teammates in far-apart timezones show up together.
             </p>
           ) : null}
 
