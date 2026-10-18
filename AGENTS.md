@@ -11,6 +11,7 @@
 
 - Daily accounting lives in `src/lib/daily-accounting.ts`; sum bank movements before clamping so every screen uses order-independent totals.
 - Historical daily goals are database snapshots; settings changes must preserve prior dates so completed history is not rewritten.
+- Reconstructed pretracking goals must remain labeled as fallback; never present inferred old settings as verified history.
 - Bank and log mutations are validated by serialized database triggers; application checks alone cannot prevent concurrent overdrafts.
 - Progress mutations use `refreshProgress` to refresh all dependent views together.
 - Calendar tracking uses UTC dates across the app; reminder clock times remain local to the user's browser.
