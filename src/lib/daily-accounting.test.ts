@@ -31,8 +31,12 @@ describe("daily progress regressions", () => {
     expect(computeStreaks(["2026-10-16"], "2026-10-18").onGrace).toBe(true);
   });
   test("a later missed day does not reduce an already earned longest streak", () => {
-    expect(computeStreaks(["2026-10-10", "2026-10-11", "2026-10-13", "2026-10-14", "2026-10-16"],
-      "2026-10-18").longest).toBe(4);
+    expect(
+      computeStreaks(
+        ["2026-10-10", "2026-10-11", "2026-10-13", "2026-10-14", "2026-10-16"],
+        "2026-10-18",
+      ).longest,
+    ).toBe(4);
   });
   test("weekly allowance excludes forgiven days older than seven days", () => {
     const hits = Array.from({ length: 20 }, (_, i) => addDays("2026-09-29", i)).filter(
@@ -45,9 +49,11 @@ describe("daily progress regressions", () => {
     expect(computeStreaks(hits, "2026-10-18").current).toBe(45);
   });
   test("personal and squad streaks exclude days before the challenge start", () => {
-    expect(computeStreaks(["2026-10-16", "2026-10-17", "2026-10-18"], "2026-10-18", {
-      startDate: "2026-10-17",
-    }).current).toBe(2);
+    expect(
+      computeStreaks(["2026-10-16", "2026-10-17", "2026-10-18"], "2026-10-18", {
+        startDate: "2026-10-17",
+      }).current,
+    ).toBe(2);
   });
   test("planned recovery preserves the streak without spending forgiveness", () => {
     const result = computeStreaks(["2026-10-16", "2026-10-18"], "2026-10-18", {
