@@ -40,6 +40,11 @@ describe("daily progress regressions", () => {
     const hits = Array.from({ length: 45 }, (_, i) => addDays("2026-09-04", i));
     expect(computeStreaks(hits, "2026-10-18").current).toBe(45);
   });
+  test("personal and squad streaks exclude days before the challenge start", () => {
+    expect(computeStreaks(["2026-10-16", "2026-10-17", "2026-10-18"], "2026-10-18", {
+      startDate: "2026-10-17",
+    }).current).toBe(2);
+  });
   test("planned recovery preserves the streak without spending forgiveness", () => {
     const result = computeStreaks(["2026-10-16", "2026-10-18"], "2026-10-18", {
       recoveryDates: ["2026-10-17"],

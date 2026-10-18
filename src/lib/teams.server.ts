@@ -67,7 +67,7 @@ export async function fetchTeamStats(
     supabaseAdmin.from("profiles").select("id, display_name, avatar_url").in("id", memberIds),
     supabaseAdmin
       .from("user_settings")
-      .select("user_id,daily_target,rest_day_of_week")
+      .select("user_id,daily_target,rest_day_of_week,start_date")
       .in("user_id", memberIds),
     readPages((from, to) =>
       supabaseAdmin
@@ -115,6 +115,7 @@ export async function fetchTeamStats(
       }),
   );
   const targetById = new Map((settings.data ?? []).map((s) => [s.user_id, s.daily_target]));
+  const startDateById = new Map((settings.data ?? []).map((s) => [s.user_id, s.start_date]));
   const restDayById = new Map(
     (settings.data ?? []).map((s) => [s.user_id, s.rest_day_of_week ?? null]),
   );
@@ -179,7 +180,7 @@ export async function fetchTeamStats(
       const currentStreak = computeStreaks(
         hitDatesFor(perDay, memberGoals, baseTarget, restDay),
         today,
-        { recoveryDates },
+        { recoveryDates, startDate: startDateById.get(member.user_id) },
       ).current;
 
       return {

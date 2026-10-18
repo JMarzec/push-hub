@@ -147,7 +147,9 @@ export const renameTeam = createServerFn({ method: "POST" })
       .from("teams")
       .update({ name: data.name })
       .eq("id", data.teamId)
-      .eq("owner_id", context.userId);
+      .eq("owner_id", context.userId)
+      .select("id")
+      .single();
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -169,7 +171,9 @@ export const setSharedTarget = createServerFn({ method: "POST" })
       .from("teams")
       .update({ shared_target: data.sharedTarget, shared_frequency: data.sharedFrequency })
       .eq("id", data.teamId)
-      .eq("owner_id", context.userId);
+      .eq("owner_id", context.userId)
+      .select("id")
+      .single();
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -185,7 +189,9 @@ export const setFollowSharedTarget = createServerFn({ method: "POST" })
       .from("team_members")
       .update({ follow_shared_target: data.follow })
       .eq("team_id", data.teamId)
-      .eq("user_id", context.userId);
+      .eq("user_id", context.userId)
+      .select("id")
+      .single();
     if (error) throw new Error(error.message);
     return { ok: true };
   });
