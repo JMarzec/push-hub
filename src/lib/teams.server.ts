@@ -180,7 +180,7 @@ export async function fetchTeamStats(
       const currentStreak = computeStreaks(
         hitDatesFor(perDay, memberGoals, baseTarget, restDay),
         today,
-        { recoveryDates, startDate: startDateById.get(member.user_id) },
+        { recoveryDates, startDate: startDateById.get(member.user_id) ?? today },
       ).current;
 
       return {
