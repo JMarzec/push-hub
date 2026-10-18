@@ -185,9 +185,32 @@ export function computeStreaks(
   onGrace =
     current > 0 && statuses.get(todayMs - DAY_MS) === "rest" && inCurrent.has(todayMs - DAY_MS);
 
+  // Longest is earned chronologically; a later miss must not steal forgiveness
+  // from an earlier completed run when evaluating history backwards.
+  let forwardRun = 0;
+  let forwardLongest = 0;
+  const forwardRest: number[] = [];
+  for (let ms = startMs; ms <= todayMs; ms += DAY_MS) {
+    while (forwardRest.length && ms - (forwardRest[0] ?? ms) >= REST_WINDOW_DAYS * DAY_MS) {
+      forwardRest.shift();
+    }
+    if (hits.has(toKey(ms))) {
+      forwardRun += 1;
+      forwardLongest = Math.max(forwardLongest, forwardRun);
+    } else if (isRecovery(ms) || ms === todayMs) {
+      continue;
+    } else if (forwardRest.length < MAX_REST_DAYS_PER_WINDOW) {
+      forwardRest.push(ms);
+    } else {
+      forwardRun = 0;
+      forwardRest.length = 0;
+      forwardRest.push(ms);
+    }
+  }
+
   return {
     current,
-    longest: Math.max(longest, current),
+    longest: Math.max(forwardLongest, current),
     restDaysUsed,
     restDaysLeft: Math.max(0, MAX_REST_DAYS_PER_WINDOW - restDaysUsed),
     onGrace,
