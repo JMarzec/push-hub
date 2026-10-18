@@ -63,7 +63,7 @@ export const Route = createFileRoute("/_authenticated/wellbeing")({
     <Shell>
       <div role="alert" className="rounded-2xl bg-card p-5 text-sm text-muted-foreground">
         <p className="font-semibold text-foreground">We couldn't load your wellbeing feed</p>
-        <p className="mt-1">{error.message}</p>
+        <p className="mt-1">{error instanceof Error ? error.message : String(error)}</p>
       </div>
     </Shell>
   ),
