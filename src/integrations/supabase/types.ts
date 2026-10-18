@@ -95,6 +95,7 @@ export type Database = {
           frequency: number
           goal_date: string
           history_basis: string
+          recorded_at: string
           rest_day_of_week: number | null
           user_id: string
         }
@@ -103,6 +104,7 @@ export type Database = {
           frequency: number
           goal_date: string
           history_basis?: string
+          recorded_at?: string
           rest_day_of_week?: number | null
           user_id: string
         }
@@ -111,6 +113,7 @@ export type Database = {
           frequency?: number
           goal_date?: string
           history_basis?: string
+          recorded_at?: string
           rest_day_of_week?: number | null
           user_id?: string
         }

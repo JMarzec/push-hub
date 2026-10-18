@@ -29,6 +29,13 @@
       "when": 1792307528775,
       "tag": "0003_finish_goal_history_and_squad_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792308172346,
+      "tag": "0004_label_reconstructed_goal_history",
+      "breakpoints": true
     }
   ]
 }
