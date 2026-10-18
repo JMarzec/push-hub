@@ -54,7 +54,7 @@ export const Route = createFileRoute("/_authenticated/squad")({
   errorComponent: ({ error }) => (
     <main className="mx-auto max-w-md px-5 py-16 text-center">
       <h1 className="text-xl font-bold text-foreground">Couldn't load your squad</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+      <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
     </main>
   ),
   notFoundComponent: () => (
