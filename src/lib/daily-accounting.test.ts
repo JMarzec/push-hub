@@ -30,6 +30,10 @@ describe("daily progress regressions", () => {
   test("unfinished today reports grace when yesterday was forgiven", () => {
     expect(computeStreaks(["2026-10-16"], "2026-10-18").onGrace).toBe(true);
   });
+  test("a later missed day does not reduce an already earned longest streak", () => {
+    expect(computeStreaks(["2026-10-10", "2026-10-11", "2026-10-13", "2026-10-14", "2026-10-16"],
+      "2026-10-18").longest).toBe(4);
+  });
   test("weekly allowance excludes forgiven days older than seven days", () => {
     const hits = Array.from({ length: 20 }, (_, i) => addDays("2026-09-29", i)).filter(
       (d) => d !== "2026-10-02" && d !== "2026-10-10",
