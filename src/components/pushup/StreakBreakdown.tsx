@@ -57,7 +57,7 @@ export function StreakBreakdown({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const selectedDay = selectedDate ? timeline.find((d) => d.date === selectedDate) ?? null : null;
+  const selectedDay = selectedDate ? (timeline.find((d) => d.date === selectedDate) ?? null) : null;
 
   const relevant = timeline.filter((d) => d.status !== "none" && d.status !== "pending");
   const recent = relevant.slice(-30).reverse();
@@ -118,7 +118,7 @@ export function StreakBreakdown({
                       >
                         <span className="font-semibold text-foreground">{shortDate(day.date)}</span>
                         <span className="text-muted-foreground tabular-nums">
-                          {day.reps}/{dailyTarget} reps
+                          {day.reps}/{day.target ?? dailyTarget} reps
                           {day.inCurrentStreak ? " · in current streak" : ""}
                         </span>
                       </button>

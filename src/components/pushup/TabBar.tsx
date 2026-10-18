@@ -35,7 +35,6 @@ export function TabBar({ active = 0 }: { active?: number }) {
                 <Icon className="size-5" aria-hidden="true" />
                 {item.label}
               </Link>
-
             </li>
           );
         })}

@@ -1,3 +1,4 @@
+import { ConversionEditor } from "@/components/pushup/ConversionEditor";
 import { useState } from "react";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -19,11 +20,7 @@ import {
   type ConversionRate,
   type ConversionUnit,
 } from "@/lib/activity-conversions";
-import {
-  deleteConversion,
-  listConversions,
-  saveConversion,
-} from "@/lib/conversions.functions";
+import { deleteConversion, listConversions, saveConversion } from "@/lib/conversions.functions";
 import { cn } from "@/lib/utils";
 
 const conversionsQueryOptions = queryOptions({
@@ -55,12 +52,10 @@ export const Route = createFileRoute("/_authenticated/conversions")({
 
 function ConversionsScreen() {
   const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery(conversionsQueryOptions);
+  const { data, isLoading, isError, refetch } = useQuery(conversionsQueryOptions);
   const conversions = data?.conversions ?? [];
 
-  const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ["conversions"] });
-  };
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["conversions"] });
 
   const saveMutation = useMutation({
     mutationFn: useServerFn(saveConversion),
@@ -155,89 +150,22 @@ function ConversionsScreen() {
           </div>
         )}
 
+        {isError ? (
+          <div role="alert" className="mt-6 text-sm text-destructive">
+            Could not load your conversions.{" "}
+            <Button variant="outline" size="sm" onClick={() => void refetch()}>
+              Retry
+            </Button>
+          </div>
+        ) : null}
         <ul className="mt-6 space-y-3">
           {conversions.map((rate) => (
-            <li
+            <ConversionEditor
               key={rate.activityKey}
-              className={cn(
-                "rounded-2xl border border-border bg-card p-4",
-                !rate.enabled && "opacity-60",
-              )}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-bold text-foreground">{rate.label}</p>
-                  <p className="text-xs text-muted-foreground">{describeRate(rate)}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={rate.enabled}
-                    aria-label={`Show ${rate.label} when logging`}
-                    onCheckedChange={(checked) => void persist(rate, { enabled: checked })}
-                  />
-                  {rate.isCustom && rate.id && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Delete ${rate.label}`}
-                      onClick={() => {
-                        void deleteMutation.mutateAsync({ data: { id: rate.id! } });
-                      }}
-                    >
-                      <Trash2 className="size-4" aria-hidden="true" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-3 flex items-end gap-2">
-                <div className="w-24">
-                  <Label htmlFor={`step-${rate.activityKey}`} className="text-xs">
-                    Every
-                  </Label>
-                  <Input
-                    id={`step-${rate.activityKey}`}
-                    type="number"
-                    min={0}
-                    step="any"
-                    defaultValue={rate.unitStep}
-                    onBlur={(e) => {
-                      const step = Number(e.target.value);
-                      if (!(step > 0) || step === rate.unitStep) return;
-                      void persist(rate, {
-                        unitStep: step,
-                        pushupsPerUnit: perStepToPerUnit(
-                          perUnitToPerStep(rate.pushupsPerUnit, rate.unitStep),
-                          step,
-                        ),
-                      });
-                    }}
-                  />
-                </div>
-                <span className="pb-2.5 text-sm text-muted-foreground">
-                  {UNIT_LABELS[rate.unit]} =
-                </span>
-                <div className="w-24">
-                  <Label htmlFor={`value-${rate.activityKey}`} className="text-xs">
-                    Push-ups
-                  </Label>
-                  <Input
-                    id={`value-${rate.activityKey}`}
-                    type="number"
-                    min={0}
-                    step="any"
-                    defaultValue={perUnitToPerStep(rate.pushupsPerUnit, rate.unitStep)}
-                    onBlur={(e) => {
-                      const perStep = Number(e.target.value);
-                      if (!(perStep > 0)) return;
-                      const nextPerUnit = perStepToPerUnit(perStep, rate.unitStep);
-                      if (nextPerUnit === rate.pushupsPerUnit) return;
-                      void persist(rate, { pushupsPerUnit: nextPerUnit });
-                    }}
-                  />
-                </div>
-              </div>
-            </li>
+              rate={rate}
+              save={persist}
+              remove={(id) => deleteMutation.mutateAsync({ data: { id } })}
+            />
           ))}
         </ul>
 
@@ -289,9 +217,7 @@ function ConversionsScreen() {
                   onChange={(e) => setNewStep(e.target.value)}
                 />
               </div>
-              <span className="pb-2.5 text-sm text-muted-foreground">
-                {UNIT_LABELS[newUnit]} =
-              </span>
+              <span className="pb-2.5 text-sm text-muted-foreground">{UNIT_LABELS[newUnit]} =</span>
               <div className="w-24">
                 <Label htmlFor="new-value" className="text-xs">
                   Push-ups
@@ -309,7 +235,7 @@ function ConversionsScreen() {
             <Button
               className="h-11 w-full gap-2 rounded-full font-bold"
               disabled={saveMutation.isPending}
-              onClick={() => void addCustom()}
+              onClick={() => void addCustom().catch(() => {})}
             >
               <Plus className="size-4" aria-hidden="true" />
               Add activity

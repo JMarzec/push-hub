@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
 import { joinTeam, previewTeamByCode } from "@/lib/teams.functions";
+import { useQueryClient } from "@tanstack/react-query";
+import { refreshProgress } from "@/lib/query-refresh";
 
 export const Route = createFileRoute("/join/$inviteCode")({
   head: ({ params }) => ({
@@ -32,13 +34,16 @@ function JoinPage() {
   const { inviteCode } = Route.useParams();
   const session = useSession();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const joining = useRef(false);
   const [teamName, setTeamName] = useState<string | null>(null);
-  const [status, setStatus] = useState<"loading" | "found" | "invalid">("loading");
+  const [status, setStatus] = useState<"loading" | "found" | "invalid" | "error">("loading");
 
+  const [retry, setRetry] = useState(0);
   // Show who invited them before sign-in.
   useEffect(() => {
     let cancelled = false;
+    setStatus("loading");
     void previewTeamByCode({ data: { code: inviteCode } })
       .then((team) => {
         if (cancelled) return;
@@ -50,12 +55,12 @@ function JoinPage() {
         setStatus("found");
       })
       .catch(() => {
-        if (!cancelled) setStatus("invalid");
+        if (!cancelled) setStatus("error");
       });
     return () => {
       cancelled = true;
     };
-  }, [inviteCode]);
+  }, [inviteCode, retry]);
 
   // Once signed in, accept the invite, then land on the squad screen.
   useEffect(() => {
@@ -64,6 +69,7 @@ function JoinPage() {
     void (async () => {
       try {
         await joinTeam({ data: { code: inviteCode } });
+        await refreshProgress(queryClient);
         toast.success("You're in! Welcome to the squad.");
         void navigate({ to: "/squad", replace: true });
       } catch (error) {
@@ -71,7 +77,17 @@ function JoinPage() {
         void navigate({ to: "/today", replace: true });
       }
     })();
-  }, [session, inviteCode, navigate, status]);
+  }, [session, inviteCode, navigate, status, queryClient]);
+
+  if (status === "error")
+    return (
+      <main className="min-h-screen bg-background p-8 text-center">
+        <h1 className="text-xl font-bold">Could not load this invitation</h1>
+        <Button className="mt-4" onClick={() => setRetry((n) => n + 1)}>
+          Retry
+        </Button>
+      </main>
+    );
 
   if (status === "invalid") {
     return (
@@ -114,11 +130,9 @@ function JoinPage() {
           {teamName ? `You're invited to ${teamName}` : "You're invited to a team"}
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-card/70">
-          Invite code{" "}
-          <span className="font-mono font-semibold text-card">{inviteCode}</span>. Create a free
-          account or sign in to join — only registered members can log push-ups.
+          Invite code <span className="font-mono font-semibold text-card">{inviteCode}</span>.
+          Create a free account or sign in to join — only registered members can log push-ups.
         </p>
-
 
         <div className="mt-7 space-y-2">
           <Button asChild className="h-13 w-full rounded-full py-4 text-base font-bold">

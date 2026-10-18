@@ -17,7 +17,7 @@ export interface TeamMemberStat {
   displayName: string;
   role: string;
   repsToday: number;
-  /** Reps over the viewer's last two local days — covers teammates in far-apart timezones. */
+  /** Net progress recorded during the rolling last 48 hours. */
   repsTwoDays: number;
   dailyTarget: number;
   repsWeek: number;
@@ -43,11 +43,16 @@ export interface MemberMonthDay {
 
 export const getMyTeam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  // Squad numbers must line up with each member's own ring, so the caller sends
-  // its local date instead of letting the server assume UTC.
+  // All progress uses the UTC challenge calendar.
   .inputValidator((input: unknown) =>
     z
-      .object({ today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() })
+      .object({
+        includeStats: z.boolean().optional(),
+        today: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+      })
       .catch({})
       .parse(input ?? {}),
   )
@@ -60,25 +65,20 @@ export const getMyTeam = createServerFn({ method: "POST" })
         "team_id, role, follow_shared_target, teams(id, name, invite_code, owner_id, shared_target, shared_frequency)",
       )
       .eq("user_id", userId)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
+      .order("id")
       .limit(1)
       .maybeSingle();
     if (memberError) throw new Error(memberError.message);
     if (!membership?.teams) return { team: null, members: [] as TeamMemberStat[] };
 
-    const team = membership.teams as unknown as {
-      id: string;
-      name: string;
-      invite_code: string;
-      owner_id: string;
-      shared_target: number | null;
-      shared_frequency: number | null;
-    };
+    const team = membership.teams;
 
     // Roster + teammate stats need to read other members' rows, so they run
     // through trusted server code after membership above is confirmed.
     const { fetchTeamStats } = await import("./teams.server");
-    const members = await fetchTeamStats(team.id, team.shared_target, data.today);
+    const members =
+      data.includeStats === false ? [] : await fetchTeamStats(team.id, team.shared_target);
 
     return {
       team: {
@@ -105,19 +105,15 @@ export const createTeam = createServerFn({ method: "POST" })
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const code = randomCode();
-      const teamId = crypto.randomUUID();
-      // No RETURNING: the team SELECT policy requires membership, which does not exist yet.
-      const { error } = await supabase
-        .from("teams")
-        .insert({ id: teamId, name: data.name, invite_code: code, owner_id: userId });
+      const { data: teamId, error } = await supabase.rpc("create_squad", {
+        p_name: data.name,
+        p_code: code,
+      });
       if (error) {
-        if (error.code === "23505" || error.message.includes("invite_code")) continue;
+        if (error.code === "23505") continue;
         throw new Error(error.message);
       }
-      const { error: joinError } = await supabase
-        .from("team_members")
-        .insert({ team_id: teamId, user_id: userId, role: "owner" });
-      if (joinError) throw new Error(joinError.message);
+      if (!teamId) throw new Error("Squad was not created");
       return { id: teamId, name: data.name, inviteCode: code };
     }
     throw new Error("Could not generate an invite code, please try again.");
@@ -136,14 +132,9 @@ export const joinTeam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ code: z.string().trim().min(4).max(12) }).parse(input))
   .handler(async ({ data, context }) => {
-    const { lookupTeamByCode, addTeamMember } = await import("./teams.server");
-    const team = await lookupTeamByCode(data.code);
-    if (!team) throw new Error("That invite code is not valid");
-    if (team.memberCount >= 50 && !team.memberIds.includes(context.userId)) {
-      throw new Error("This team is full");
-    }
-    await addTeamMember(team.id, context.userId);
-    return { teamId: team.id };
+    const { data: teamId, error } = await context.supabase.rpc("join_squad", { p_code: data.code });
+    if (error) throw new Error(error.message);
+    return { teamId };
   });
 
 export const renameTeam = createServerFn({ method: "POST" })
@@ -203,11 +194,7 @@ export const leaveTeam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ teamId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("team_members")
-      .delete()
-      .eq("team_id", data.teamId)
-      .eq("user_id", context.userId);
+    const { error } = await context.supabase.rpc("leave_squad", { p_team: data.teamId });
     if (error) throw new Error(error.message);
     return { ok: true };
   });

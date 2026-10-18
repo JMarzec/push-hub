@@ -1,0 +1,4 @@
+CREATE OR REPLACE FUNCTION public.preserve_goal_history() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE u uuid; BEGIN IF TG_TABLE_NAME='teams' THEN FOR u IN SELECT user_id FROM team_members WHERE team_id=OLD.id LOOP PERFORM capture_daily_goals(u,(now() AT TIME ZONE 'UTC')::date-1); END LOOP; ELSE u:=OLD.user_id; PERFORM capture_daily_goals(u,(now() AT TIME ZONE 'UTC')::date-1); END IF; IF TG_OP='DELETE' THEN RETURN OLD; END IF; RETURN NEW; END; $$;
+CREATE OR REPLACE FUNCTION public.refresh_daily_goals() RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ BEGIN IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Sign in required'; END IF; PERFORM capture_daily_goals(auth.uid(),(now() AT TIME ZONE 'UTC')::date-1); END; $$;
+REVOKE ALL ON FUNCTION public.refresh_daily_goals() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.refresh_daily_goals() TO authenticated,service_role;

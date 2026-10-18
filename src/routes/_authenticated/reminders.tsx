@@ -1,3 +1,7 @@
+import { QueryNotice } from "@/components/pushup/QueryNotice";
+import { localToday } from "@/lib/local-date";
+import { useToday } from "@/hooks/useToday";
+import { refreshProgress } from "@/lib/query-refresh";
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,13 +22,6 @@ import { ReminderSheet } from "@/components/pushup/ReminderSheet";
 import { useReminders } from "@/hooks/useReminders";
 import { getToday, updateReminderSettings } from "@/lib/pushups.functions";
 import { cn } from "@/lib/utils";
-
-function localToday(): string {
-  const now = new Date();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${m}-${d}`;
-}
 
 export const Route = createFileRoute("/_authenticated/reminders")({
   head: () => ({
@@ -64,7 +61,11 @@ function StepRow({
       <Icon
         className={cn(
           "mt-0.5 size-5 shrink-0",
-          ok === true ? "text-primary" : ok === "warn" ? "text-muted-foreground" : "text-destructive",
+          ok === true
+            ? "text-primary"
+            : ok === "warn"
+              ? "text-muted-foreground"
+              : "text-destructive",
         )}
         aria-hidden="true"
       />
@@ -79,7 +80,7 @@ function StepRow({
 
 function RemindersHelp() {
   const queryClient = useQueryClient();
-  const [today] = useState(localToday);
+  const today = useToday();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const todayQuery = useQuery({
@@ -91,7 +92,7 @@ function RemindersHelp() {
   const reminderMutation = useMutation({
     mutationFn: useServerFn(updateReminderSettings),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["today"] });
+      void refreshProgress(queryClient);
       toast.success("Reminder settings saved.");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -102,13 +103,20 @@ function RemindersHelp() {
   const frequency = settings?.frequency ?? 4;
   const slotTimes = settings?.slotTimes ?? ["08:00", "12:00", "17:00", "21:00"];
   const enabled = settings?.remindersEnabled ?? false;
-  const loggedToday = Object.values(
-    (todayQuery.data?.repsBySlot ?? {}) as Record<string, number>,
-  ).reduce((sum, n) => sum + n, 0);
-  const remaining = Math.max(dailyTarget - loggedToday, 0);
+  const loggedToday =
+    Object.values((todayQuery.data?.repsBySlot ?? {}) as Record<string, number>).reduce(
+      (sum, n) => sum + n,
+      0,
+    ) +
+    (todayQuery.data?.withdrawnToday ?? 0) -
+    (todayQuery.data?.depositedToday ?? 0);
+  const remaining = settings?.isRecoveryDay
+    ? 0
+    : Math.max(dailyTarget - Math.max(loggedToday, 0), 0);
 
   const reminders = useReminders({
     enabled,
+    scheduleTimers: false,
     today,
     slotTimes,
     perSet: Math.ceil(dailyTarget / frequency),
@@ -140,6 +148,12 @@ function RemindersHelp() {
       </header>
 
       <main className="mx-auto -mt-4 w-full max-w-md flex-1 space-y-4 px-5 pb-8">
+        <QueryNotice
+          failed={todayQuery.isError}
+          retry={() => {
+            void todayQuery.refetch();
+          }}
+        />
         <section
           className={cn(
             "rounded-3xl p-5 text-center shadow-[var(--shadow-ring)]",
@@ -185,7 +199,13 @@ function RemindersHelp() {
               }
             />
             <StepRow
-              ok={reminders.permission === "granted" ? true : reminders.permission === "default" ? "warn" : false}
+              ok={
+                reminders.permission === "granted"
+                  ? true
+                  : reminders.permission === "default"
+                    ? "warn"
+                    : false
+              }
               title="2. Notification permission granted"
               detail={
                 reminders.permission === "granted"
@@ -324,7 +344,9 @@ function RemindersHelp() {
           <ul className="mt-2 list-disc space-y-1.5 pl-5 text-xs text-muted-foreground">
             <li>Reminders fire from an open Push Daily tab — keep one open in the background.</li>
             <li>On iPhone, add Push Daily to your home screen first, then allow notifications.</li>
-            <li>Check your operating system's Focus / Do Not Disturb and per-browser alert settings.</li>
+            <li>
+              Check your operating system's Focus / Do Not Disturb and per-browser alert settings.
+            </li>
             <li>Nudges are skipped once you finish today's target, and reset after midnight.</li>
           </ul>
         </section>

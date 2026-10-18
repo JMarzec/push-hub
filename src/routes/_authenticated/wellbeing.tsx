@@ -1,3 +1,6 @@
+import { localToday } from "@/lib/local-date";
+import { useToday } from "@/hooks/useToday";
+import { refreshProgress } from "@/lib/query-refresh";
 import { Suspense, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
@@ -14,13 +17,6 @@ import {
   type WellbeingEntry,
 } from "@/lib/wellbeing";
 import { cn } from "@/lib/utils";
-
-function localToday(): string {
-  const now = new Date();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${m}-${d}`;
-}
 
 function localTimezone(): string {
   try {
@@ -56,8 +52,8 @@ export const Route = createFileRoute("/_authenticated/wellbeing")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: ({ context }) => {
-    void context.queryClient.ensureQueryData(wellbeingQueryOptions(localToday()));
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(wellbeingQueryOptions(localToday()));
   },
   errorComponent: ({ error }) => (
     <Shell>
@@ -127,7 +123,7 @@ function WellbeingPage() {
 }
 
 function WellbeingFeed() {
-  const today = localToday();
+  const today = useToday();
   const { data } = useSuspenseQuery(wellbeingQueryOptions(today));
   const [filter, setFilter] = useState<WellbeingCategory | "All">("All");
   const [selected, setSelected] = useState<WellbeingEntry | null>(null);

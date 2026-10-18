@@ -124,8 +124,8 @@ function AuthPage() {
         <div className="w-full max-w-sm rounded-3xl bg-card p-6 text-center shadow-[var(--shadow-ring)]">
           <h1 className="text-xl font-bold text-foreground">Check your email</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            We sent a confirmation link to <span className="font-semibold">{email}</span>. Confirm it
-            to start logging push-ups.
+            We sent a confirmation link to <span className="font-semibold">{email}</span>. Confirm
+            it to start logging push-ups.
           </p>
           <Button variant="ghost" className="mt-4" onClick={() => setCheckEmail(false)}>
             Back to sign in

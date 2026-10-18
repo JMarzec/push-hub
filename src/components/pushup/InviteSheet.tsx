@@ -107,7 +107,9 @@ export function InviteSheet({
             </Button>
           </div>
           {team && !team.isOwner ? (
-            <p className="text-xs text-muted-foreground">Only the team owner can rename the team.</p>
+            <p className="text-xs text-muted-foreground">
+              Only the team owner can rename the team.
+            </p>
           ) : null}
         </div>
 

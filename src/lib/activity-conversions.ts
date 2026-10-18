@@ -108,7 +108,6 @@ export function describeRate(rate: ConversionRate): string {
   const perStep = rate.unitStep * rate.pushupsPerUnit;
   const rounded = Number.isInteger(perStep) ? perStep : Number(perStep.toFixed(1));
   return `${rate.unitStep} ${UNIT_LABELS[rate.unit]} = ${rounded} push-ups`;
-
 }
 
 /** Turn the per-chunk value a user types into the stored per-unit rate. */

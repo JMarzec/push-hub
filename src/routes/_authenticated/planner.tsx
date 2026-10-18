@@ -1,6 +1,16 @@
+import { QueryNotice } from "@/components/pushup/QueryNotice";
+import { localToday, addDays as calendarAddDays } from "@/lib/local-date";
+import { useToday } from "@/hooks/useToday";
+import { refreshProgress } from "@/lib/query-refresh";
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { queryOptions, useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { CalendarClock, Flame, Plus, Target, Trash2 } from "lucide-react";
@@ -12,13 +22,6 @@ import { TabBar } from "@/components/pushup/TabBar";
 import { StreakTimeline } from "@/components/pushup/StreakTimeline";
 import { deletePlan, listPlans, savePlan } from "@/lib/plans.functions";
 import { getStats } from "@/lib/pushups.functions";
-
-function localToday(): string {
-  const now = new Date();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${m}-${d}`;
-}
 
 const FREQUENCIES = [1, 2, 3, 4, 6];
 
@@ -47,15 +50,15 @@ export const Route = createFileRoute("/_authenticated/planner")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: ({ context }) => {
-    void context.queryClient.ensureQueryData(plansQueryOptions(localToday()));
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(plansQueryOptions(localToday()));
   },
   component: Planner,
 });
 
 function Planner() {
   const queryClient = useQueryClient();
-  const [today] = useState(localToday);
+  const today = useToday();
   const { data } = useSuspenseQuery(plansQueryOptions(today));
 
   const statsQuery = useQuery({
@@ -65,17 +68,14 @@ function Planner() {
   });
   const stats = statsQuery.data;
 
-  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  const tomorrow = calendarAddDays(today, 1);
   const [date, setDate] = useState(tomorrow);
   const [target, setTarget] = useState(data.current.dailyTarget);
   const [frequency, setFrequency] = useState(data.current.frequency);
   const [note, setNote] = useState("");
 
   const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ["plans"] });
-    void queryClient.invalidateQueries({ queryKey: ["today"] });
-    void queryClient.invalidateQueries({ queryKey: ["stats"] });
-    void queryClient.invalidateQueries({ queryKey: ["team"] });
+    void refreshProgress(queryClient);
   };
 
   const saveMutation = useMutation({
@@ -120,11 +120,20 @@ function Planner() {
       </header>
 
       <main className="mx-auto w-full max-w-md flex-1 px-5 pb-8">
+        <QueryNotice
+          failed={statsQuery.isError}
+          retry={() => {
+            void statsQuery.refetch();
+          }}
+        />
         <section
           className="-mt-5 rounded-2xl border border-border bg-card p-4 shadow-sm"
           aria-labelledby="new-plan-heading"
         >
-          <h2 id="new-plan-heading" className="flex items-center gap-2 text-sm font-bold text-foreground">
+          <h2
+            id="new-plan-heading"
+            className="flex items-center gap-2 text-sm font-bold text-foreground"
+          >
             <CalendarClock className="size-4 text-primary" aria-hidden="true" />
             Schedule a change
           </h2>
@@ -220,8 +229,8 @@ function Planner() {
           </h2>
           {upcoming.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-              Nothing scheduled yet. Plan a step up so your target grows without you thinking
-              about it.
+              Nothing scheduled yet. Plan a step up so your target grows without you thinking about
+              it.
             </p>
           ) : (
             <ul className="space-y-2">
@@ -256,7 +265,10 @@ function Planner() {
         </section>
 
         <section className="mt-6" aria-labelledby="streak-heading">
-          <h2 id="streak-heading" className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground">
+          <h2
+            id="streak-heading"
+            className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground"
+          >
             <Flame className="size-4 text-primary" aria-hidden="true" />
             Streak tracking
           </h2>
@@ -278,7 +290,10 @@ function Planner() {
 
         {history.length > 0 ? (
           <section className="mt-6" aria-labelledby="history-heading">
-            <h2 id="history-heading" className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground">
+            <h2
+              id="history-heading"
+              className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground"
+            >
               <Target className="size-4 text-primary" aria-hidden="true" />
               Applied changes
             </h2>

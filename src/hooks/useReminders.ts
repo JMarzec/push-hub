@@ -51,6 +51,7 @@ function minutesOfDay(time: string): number {
 
 interface UseRemindersArgs {
   enabled: boolean;
+  scheduleTimers?: boolean;
   today: string;
   slotTimes: string[];
   perSet: number;
@@ -63,7 +64,14 @@ export type SlotDiagnostic = {
   minutesAway: number;
 };
 
-export function useReminders({ enabled, today, slotTimes, perSet, remaining }: UseRemindersArgs) {
+export function useReminders({
+  enabled,
+  scheduleTimers = true,
+  today,
+  slotTimes,
+  perSet,
+  remaining,
+}: UseRemindersArgs) {
   const [permission, setPermission] = useState<NotificationPermissionState>(() =>
     supported() ? Notification.permission : "unsupported",
   );
@@ -94,7 +102,7 @@ export function useReminders({ enabled, today, slotTimes, perSet, remaining }: U
 
   useEffect(() => {
     const now = new Date();
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
     const fired = typeof window === "undefined" ? {} : readFired();
 
     const diagnostics: SlotDiagnostic[] = slotTimes.map((time) => {
@@ -108,7 +116,8 @@ export function useReminders({ enabled, today, slotTimes, perSet, remaining }: U
     });
     setSchedule(diagnostics);
 
-    if (!enabled || !supported() || Notification.permission !== "granted") return;
+    if (!scheduleTimers || !enabled || !supported() || Notification.permission !== "granted")
+      return;
     if (remaining <= 0) return;
 
     const timers: number[] = [];
@@ -117,12 +126,14 @@ export function useReminders({ enabled, today, slotTimes, perSet, remaining }: U
       const key = `${today}@${slot.time}`;
       const timer = window.setTimeout(
         () => {
+          if (readFired()[key] || remaining <= 0 || Notification.permission !== "granted") return;
           markFired(key);
           new Notification("Push-up set time", {
             body: `Set ${index + 1} of ${slotTimes.length}: ${perSet} push-ups. ${remaining} left today.`,
             icon: "/favicon.png",
             tag: key,
           });
+          setTick((t) => t + 1);
         },
         Math.max(slot.minutesAway, 0) * 60_000,
       );
@@ -130,13 +141,19 @@ export function useReminders({ enabled, today, slotTimes, perSet, remaining }: U
     });
 
     return () => timers.forEach((t) => window.clearTimeout(t));
-  }, [enabled, today, slotTimes, perSet, remaining, permission, tick]);
+  }, [enabled, scheduleTimers, today, slotTimes, perSet, remaining, permission, tick]);
 
   const active =
     enabled && permission === "granted" && remaining > 0
       ? schedule.filter((s) => s.status === "scheduled").length
       : 0;
 
-  return { permission, request, sendTest, supported: supported(), schedule, scheduledCount: active };
+  return {
+    permission,
+    request,
+    sendTest,
+    supported: supported(),
+    schedule,
+    scheduledCount: active,
+  };
 }
-

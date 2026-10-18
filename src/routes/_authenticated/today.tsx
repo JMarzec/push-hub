@@ -1,3 +1,7 @@
+import { QueryNotice } from "@/components/pushup/QueryNotice";
+import { localToday } from "@/lib/local-date";
+import { useToday } from "@/hooks/useToday";
+import { refreshProgress } from "@/lib/query-refresh";
 import { useState } from "react";
 import { Flame, Info, LogOut, PiggyBank, Plus, Share2, Sliders } from "lucide-react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -22,7 +26,7 @@ import { StreakBreakdown } from "@/components/pushup/StreakBreakdown";
 import { TabBar } from "@/components/pushup/TabBar";
 
 import { TargetSheet } from "@/components/pushup/TargetSheet";
-import { useReminders } from "@/hooks/useReminders";
+
 import { composeSets } from "@/lib/pushup-schedule";
 import { factForDate } from "@/lib/wellbeing";
 import { WEEKDAY_LABELS } from "@/lib/streaks";
@@ -33,21 +37,11 @@ import {
   deleteLog,
   getStats,
   getToday,
-
   logReps,
   moveBank,
   undoBankEntry,
   updateTargetSettings,
-
 } from "@/lib/pushups.functions";
-
-function localToday(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
 
 function localTimezone(): string {
   try {
@@ -76,15 +70,14 @@ export const Route = createFileRoute("/_authenticated/today")({
       { property: "og:title", content: "Today — Push Daily push-up targets" },
       {
         property: "og:description",
-        content:
-          "Log reps, bank extra progress and keep your streak going with your push-up team.",
+        content: "Log reps, bank extra progress and keep your streak going with your push-up team.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: ({ context }) => {
-    void context.queryClient.ensureQueryData(todayQueryOptions(localToday()));
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(todayQueryOptions(localToday()));
   },
   component: Today,
 });
@@ -95,14 +88,14 @@ function Today() {
   const { user } = Route.useRouteContext();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [today] = useState(localToday);
+  const today = useToday();
 
   const options = todayQueryOptions(today);
   const { data } = useSuspenseQuery(options);
 
   const teamQuery = useQuery({
-    queryKey: ["team"],
-    queryFn: () => getMyTeam({ data: { today: localToday() } }),
+    queryKey: ["team", "metadata", today],
+    queryFn: () => getMyTeam({ data: { includeStats: false } }),
     staleTime: 15_000,
   });
   const team = teamQuery.data?.team ?? null;
@@ -125,8 +118,7 @@ function Today() {
   const [inviteOpen, setInviteOpen] = useState(false);
 
   const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ["today"] });
-    void queryClient.invalidateQueries({ queryKey: ["team"] });
+    void refreshProgress(queryClient);
   };
 
   const logMutation = useMutation({
@@ -169,7 +161,6 @@ function Today() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-
   const { dailyTarget, frequency, slotTimes } = data.settings;
   const followingSquadTarget = data.settings.targetSource === "squad";
   const sets = composeSets(
@@ -182,18 +173,12 @@ function Today() {
 
   const total = sets.reduce((sum, s) => sum + s.reps, 0);
 
-  // Keep set-time nudges firing while the Home screen is open.
-  useReminders({
-    enabled: data.settings.remindersEnabled,
-    today,
-    slotTimes: data.settings.slotTimes,
-    perSet: Math.ceil(data.settings.dailyTarget / data.settings.frequency),
-    remaining: Math.max(data.settings.dailyTarget - total, 0),
-  });
   const todaysFact = factForDate(data.settings.startDate, today);
-  const nextSet = sets.find((s) => s.reps < s.target) ?? sets[sets.length - 1]!;
-  const surplus = Math.max(total - dailyTarget, 0);
-  const remainingToday = Math.max(dailyTarget - total, 0);
+  const nextSet = sets.find((s) => s.reps < s.target) ??
+    sets.at(-1) ?? { time: "08:00", target: dailyTarget, reps: 0 };
+  const todayTarget = data.settings.isRecoveryDay ? 0 : dailyTarget;
+  const surplus = Math.max(total - todayTarget, 0);
+  const remainingToday = data.settings.isRecoveryDay ? 0 : Math.max(dailyTarget - total, 0);
   const bank = data.bank;
 
   const who =
@@ -213,7 +198,7 @@ function Today() {
     const nextTotal = total + reps;
     const justCompleted = total < dailyTarget && nextTotal >= dailyTarget;
     try {
-      const { id } = await logMutation.mutateAsync({ data: { reps, slot, today } });
+      const { id } = await logMutation.mutateAsync({ data: { reps, slot, today: localToday() } });
       toast.success(
         justCompleted
           ? `You did it! ${nextTotal} of ${dailyTarget} today.`
@@ -240,7 +225,7 @@ function Today() {
         data: {
           reps: entry.reps,
           slot: entry.slot,
-          today,
+          today: localToday(),
           activityKey: entry.activityKey,
           activityLabel: entry.activityLabel,
           activityAmount: entry.activityAmount,
@@ -293,18 +278,17 @@ function Today() {
 
   async function handleDeposit(reps: number) {
     const { entryId } = await bankMutation.mutateAsync({
-      data: { reps, kind: "deposit", today },
+      data: { reps, kind: "deposit", today: localToday() },
     });
     bankUndoToast(`${reps} reps banked for a future day.`, entryId);
   }
 
   async function handleWithdraw(reps: number) {
     const { entryId } = await bankMutation.mutateAsync({
-      data: { reps, kind: "withdrawal", today },
+      data: { reps, kind: "withdrawal", today: localToday() },
     });
     bankUndoToast(`${reps} banked reps applied to today.`, entryId);
   }
-
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -354,6 +338,14 @@ function Today() {
       </header>
 
       <main className="mx-auto -mt-4 w-full max-w-md flex-1 px-5 pb-8">
+        <QueryNotice
+          failed={teamQuery.isError || statsQuery.isError || conversionsQuery.isError}
+          retry={() => {
+            void teamQuery.refetch();
+            void statsQuery.refetch();
+            void conversionsQuery.refetch();
+          }}
+        />
         <section className="rounded-3xl bg-card p-5 shadow-[var(--shadow-ring)]">
           <DayStrip
             days={Math.max(CHALLENGE_DAYS, data.dayNumber)}
@@ -369,7 +361,7 @@ function Today() {
           ) : null}
 
           <div className="mt-5 flex justify-center">
-            <ProgressRing value={total} target={dailyTarget} />
+            <ProgressRing value={total} target={todayTarget} />
           </div>
 
           <p className="mt-3 text-center text-sm text-muted-foreground">
@@ -382,7 +374,6 @@ function Today() {
               </>
             )}
           </p>
-
 
           <div className="mt-4 flex items-center justify-between rounded-2xl bg-secondary px-4 py-3">
             <div>
@@ -462,20 +453,16 @@ function Today() {
             restAllowance={statsQuery.data.restAllowance}
             onChanged={() => {
               void queryClient.invalidateQueries({ queryKey: ["stats", today] });
-              void queryClient.invalidateQueries({ queryKey: ["today"] });
+              void refreshProgress(queryClient);
             }}
           />
         ) : null}
-
-
 
         <section className="mt-5 rounded-2xl bg-accent p-4" aria-labelledby="fact-heading">
           <h2 id="fact-heading" className="text-sm font-bold text-accent-foreground">
             Today's wellbeing fact
           </h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            {todaysFact.body}
-          </p>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{todaysFact.body}</p>
           <Button
             asChild
             variant="ghost"

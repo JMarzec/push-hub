@@ -18,8 +18,8 @@ interface BankSheetProps {
   loggedToday: number;
   bank: number;
   remainingToday: number;
-  onDeposit: (reps: number) => void;
-  onWithdraw: (reps: number) => void;
+  onDeposit: (reps: number) => Promise<void>;
+  onWithdraw: (reps: number) => Promise<void>;
 }
 
 export function BankSheet({
@@ -35,14 +35,15 @@ export function BankSheet({
   const [mode, setMode] = useState<"deposit" | "withdraw">("deposit");
   // You can bank anything you've already logged today: reps past the target are
   // pure surplus, and reps below it move off today's ring into the bank.
-  const depositMax = loggedToday;
-  const withdrawMax = Math.min(bank, remainingToday);
+  const depositMax = Math.min(Math.max(loggedToday, 0), 500);
+  const withdrawMax = Math.min(bank, remainingToday, 500);
   const max = mode === "deposit" ? depositMax : withdrawMax;
   const [amount, setAmount] = useState(0);
+  const [saving, setSaving] = useState(false);
   const value = Math.min(amount, max);
 
   const defaultFor = (m: "deposit" | "withdraw") =>
-    m === "deposit" ? (surplus > 0 ? surplus : depositMax) : withdrawMax;
+    m === "deposit" ? (surplus > 0 ? Math.min(surplus, depositMax) : depositMax) : withdrawMax;
 
   // Pre-fill with everything available each time the sheet opens, so one tap
   // banks the whole surplus (the parent controls `open`, not a Radix trigger).
@@ -59,20 +60,23 @@ export function BankSheet({
     setAmount(defaultFor(next));
   }
 
-
-  function submit() {
-    if (value <= 0) return;
-    if (mode === "deposit") onDeposit(value);
-    else onWithdraw(value);
-    setAmount(0);
-    onOpenChange(false);
+  async function submit() {
+    if (value <= 0 || saving) return;
+    setSaving(true);
+    try {
+      if (mode === "deposit") await onDeposit(value);
+      else await onWithdraw(value);
+      setAmount(0);
+      onOpenChange(false);
+    } catch {
+      // The parent mutation shows the error; retain the draft for retry.
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}
-
-
-    >
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-3xl border-border">
         <SheetHeader className="text-left">
           <SheetTitle className="flex items-center gap-2 text-foreground">
@@ -86,7 +90,9 @@ export function BankSheet({
 
         <div className="mt-5 flex items-center justify-between rounded-2xl bg-accent px-4 py-3">
           <span className="text-sm font-semibold text-accent-foreground">Banked balance</span>
-          <span className="text-2xl font-extrabold tabular-nums text-accent-foreground">{bank}</span>
+          <span className="text-2xl font-extrabold tabular-nums text-accent-foreground">
+            {bank}
+          </span>
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-2" role="tablist" aria-label="Bank action">
@@ -112,7 +118,7 @@ export function BankSheet({
         <p className="mt-4 text-sm text-muted-foreground">
           {mode === "deposit"
             ? surplus > 0
-              ? `You're ${surplus} reps past today's target — bank up to ${surplus}, or up to ${depositMax} of everything you've logged today.`
+              ? `You're ${surplus} reps past today's target — bank up to ${Math.min(surplus, depositMax)}, or up to ${depositMax} of today's available reps.`
               : depositMax > 0
                 ? `You've logged ${depositMax} reps today. Banking them saves the reps for a future day and takes them off today's ring.`
                 : "Nothing to bank yet — log some reps first, then you can save them for a future day."
@@ -122,7 +128,6 @@ export function BankSheet({
                 : "Today's target is already met — no need to spend banked reps."
               : "Your bank is empty. Log extra reps on a strong day to build it up."}
         </p>
-
 
         <div className="mt-6 text-center">
           <span className="text-5xl font-extrabold tabular-nums text-foreground">{value}</span>
@@ -142,7 +147,7 @@ export function BankSheet({
 
         <Button
           className="mt-7 h-12 w-full rounded-full text-base font-bold"
-          disabled={value <= 0}
+          disabled={value <= 0 || saving}
           onClick={submit}
         >
           {mode === "deposit" ? `Bank ${value} reps` : `Use ${value} banked reps`}

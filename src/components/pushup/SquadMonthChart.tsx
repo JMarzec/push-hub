@@ -107,10 +107,7 @@ function MemberTimeline({
  * with their current streak and recovery days alongside.
  */
 export function SquadMonthChart({ members }: { members: TeamMemberStat[] }) {
-  const peak = Math.max(
-    1,
-    ...members.flatMap((m) => m.monthDays.map((d) => d.reps)),
-  );
+  const peak = Math.max(1, ...members.flatMap((m) => m.monthDays.map((d) => d.reps)));
   const squadTotal = members.reduce((sum, m) => sum + m.monthTotal, 0);
 
   const ranked = [...members].sort((a, b) => b.monthTotal - a.monthTotal);

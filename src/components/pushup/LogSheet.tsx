@@ -91,7 +91,10 @@ export function LogSheet({
         onOpenChange(next);
       }}
     >
-      <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto rounded-t-3xl border-border">
+      <SheetContent
+        side="bottom"
+        className="max-h-[92dvh] overflow-y-auto rounded-t-3xl border-border"
+      >
         <SheetHeader className="text-left">
           <SheetTitle className="text-foreground">
             {mode === "pushups" ? "Log push-ups" : "Log another activity"}

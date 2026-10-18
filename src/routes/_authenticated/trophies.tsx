@@ -1,3 +1,6 @@
+import { localToday } from "@/lib/local-date";
+import { useToday } from "@/hooks/useToday";
+import { refreshProgress } from "@/lib/query-refresh";
 import { useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
@@ -9,15 +12,6 @@ import { DayDetailsSheet } from "@/components/pushup/DayDetailsSheet";
 import { buildAchievements } from "@/lib/achievements";
 import { getStats } from "@/lib/pushups.functions";
 import type { DayStatus } from "@/lib/streaks";
-
-
-
-function localToday(): string {
-  const now = new Date();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${m}-${d}`;
-}
 
 const statsQueryOptions = (date: string) =>
   queryOptions({
@@ -44,8 +38,8 @@ export const Route = createFileRoute("/_authenticated/trophies")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: ({ context }) => {
-    void context.queryClient.ensureQueryData(statsQueryOptions(localToday()));
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(statsQueryOptions(localToday()));
   },
   component: Trophies,
 });
@@ -108,7 +102,7 @@ function diffTimelines(before: TimelineDay[], after: TimelineDay[]): DayChange[]
 }
 
 function Trophies() {
-  const [today] = useState(localToday);
+  const today = useToday();
   const { data } = useSuspenseQuery(statsQueryOptions(today));
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<TimelineDay | null>(null);
@@ -138,7 +132,6 @@ function Trophies() {
     }
   }
 
-
   const achievements = buildAchievements(data);
   const unlocked = achievements.filter((a) => a.progress >= a.goal).length;
   const changed =
@@ -146,7 +139,6 @@ function Trophies() {
     (diff.current !== diff.prevCurrent ||
       diff.longest !== diff.prevLongest ||
       diff.restDaysLeft !== diff.prevRestDaysLeft);
-
 
   const stats = [
     { label: "All-time reps", value: data.totalReps.toLocaleString() },
@@ -269,7 +261,6 @@ function Trophies() {
                 ) : null}
               </div>
             ) : null}
-
           </div>
         ) : null}
 
@@ -294,10 +285,6 @@ function Trophies() {
           }}
           onChanged={handleLogChanged}
         />
-
-
-
-
 
         <section className="mt-5" aria-labelledby="recent-heading">
           <h2 id="recent-heading" className="mb-2 text-sm font-bold text-foreground">

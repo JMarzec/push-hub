@@ -89,6 +89,41 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_goals: {
+        Row: {
+          daily_target: number
+          frequency: number
+          goal_date: string
+          history_basis: string
+          rest_day_of_week: number | null
+          user_id: string
+        }
+        Insert: {
+          daily_target: number
+          frequency: number
+          goal_date: string
+          history_basis?: string
+          rest_day_of_week?: number | null
+          user_id: string
+        }
+        Update: {
+          daily_target?: number
+          frequency?: number
+          goal_date?: string
+          history_basis?: string
+          rest_day_of_week?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_goals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -330,7 +365,36 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      apply_due_goal_plans: { Args: { p_today: string }; Returns: Json }
+      capture_daily_goals: {
+        Args: { p_until: string; p_user: string }
+        Returns: undefined
+      }
+      create_squad: {
+        Args: { p_code: string; p_name: string }
+        Returns: string
+      }
+      join_squad: { Args: { p_code: string }; Returns: string }
+      leave_squad: { Args: { p_team: string }; Returns: undefined }
+      refresh_daily_goals: { Args: never; Returns: undefined }
+      refresh_squad_daily_goals: {
+        Args: { p_team: string }
+        Returns: undefined
+      }
+      squad_daily_accounting: {
+        Args: { p_team: string }
+        Returns: {
+          day: string
+          logged_reps: number
+          net_bank: number
+          rolling_reps: number
+          user_id: string
+        }[]
+      }
+      transfer_banked_reps: {
+        Args: { p_day: string; p_kind: string; p_reps: number }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

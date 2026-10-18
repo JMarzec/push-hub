@@ -15,6 +15,7 @@ export type TimelineDay = {
   status: DayStatus;
   inCurrentStreak: boolean;
   reps: number;
+  target?: number;
 };
 
 type Props = {
@@ -28,7 +29,6 @@ type Props = {
   onGrace: boolean;
   onSelectDay?: (day: TimelineDay) => void;
 };
-
 
 const STATUS_META: Record<DayStatus, { label: string; dot: string; note: string }> = {
   hit: {
@@ -76,7 +76,6 @@ export function StreakTimeline({
   onGrace,
   onSelectDay,
 }: Props) {
-
   const [showBreakdown, setShowBreakdown] = useState(false);
   const relevant = timeline.filter((d) => d.status !== "none");
   const counted = relevant.filter((d) => d.status === "hit");
@@ -153,7 +152,6 @@ export function StreakTimeline({
                 <span className="sr-only">{`${d.date}: ${d.reps} reps, ${meta.label}`}</span>
               </button>
             </li>
-
           );
         })}
       </ol>
@@ -225,7 +223,6 @@ export function StreakTimeline({
                       </div>
                     </button>
                   </li>
-
                 );
               })}
             </ul>
