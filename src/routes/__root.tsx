@@ -7,13 +7,13 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
-
+import { ReminderScheduler } from "@/components/pushup/ReminderScheduler";
 
 function NotFoundComponent() {
   return (
@@ -38,7 +38,10 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error: caughtError, reset }: { error: unknown; reset: () => void }) {
-  const error = caughtError instanceof Error ? caughtError : new Error(String(caughtError));
+  const error = useMemo(
+    () => (caughtError instanceof Error ? caughtError : new Error(String(caughtError))),
+    [caughtError],
+  );
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -112,7 +115,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.png", type: "image/png" },
       { rel: "apple-touch-icon", href: "/favicon.png" },
     ],
-
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -143,6 +145,7 @@ function RootComponent() {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
+      if (event === "SIGNED_OUT") queryClient.clear();
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
     });
     return () => sub.subscription.unsubscribe();
@@ -150,10 +153,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ReminderScheduler />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster position="top-center" />
     </QueryClientProvider>
   );
 }
-

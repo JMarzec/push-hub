@@ -70,7 +70,7 @@ export function ProgressRing({
           )}
           aria-hidden="true"
         >
-          {complete ? "Target smashed" : `${percentLabel}%`}
+          {target === 0 ? "Recovery day" : complete ? "Target smashed" : `${percentLabel}%`}
         </span>
       </div>
     </div>

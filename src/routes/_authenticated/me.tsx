@@ -1,3 +1,7 @@
+import { QueryNotice } from "@/components/pushup/QueryNotice";
+import { addDays } from "@/lib/local-date";
+import { useToday } from "@/hooks/useToday";
+import { refreshProgress } from "@/lib/query-refresh";
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -9,7 +13,19 @@ import {
 } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Bell, CalendarClock, Flame, Info, LogOut, Repeat, Sliders, Trophy, User, Users, Wrench } from "lucide-react";
+import {
+  Bell,
+  CalendarClock,
+  Flame,
+  Info,
+  LogOut,
+  Repeat,
+  Sliders,
+  Trophy,
+  User,
+  Users,
+  Wrench,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,19 +46,6 @@ import {
   updateTargetSettings,
 } from "@/lib/pushups.functions";
 import { getMyTeam, leaveTeam } from "@/lib/teams.functions";
-
-function addDays(date: string, days: number): string {
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-function localToday(): string {
-  const now = new Date();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${m}-${d}`;
-}
 
 const profileQueryOptions = () =>
   queryOptions({
@@ -69,8 +72,8 @@ export const Route = createFileRoute("/_authenticated/me")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: ({ context }) => {
-    void context.queryClient.ensureQueryData(profileQueryOptions());
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(profileQueryOptions());
   },
   component: Me,
 });
@@ -79,7 +82,7 @@ function Me() {
   const { user } = Route.useRouteContext();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [today] = useState(localToday);
+  const today = useToday();
   const [targetOpen, setTargetOpen] = useState(false);
   const [remindersOpen, setRemindersOpen] = useState(false);
 
@@ -100,8 +103,8 @@ function Me() {
     staleTime: 15_000,
   });
   const teamQuery = useQuery({
-    queryKey: ["team"],
-    queryFn: () => getMyTeam({ data: { today: localToday() } }),
+    queryKey: ["team", "metadata", today],
+    queryFn: () => getMyTeam({ data: { includeStats: false } }),
     staleTime: 15_000,
   });
 
@@ -141,7 +144,7 @@ function Me() {
   const reminderMutation = useMutation({
     mutationFn: useServerFn(updateReminderSettings),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["today"] });
+      void refreshProgress(queryClient);
       toast.success("Reminder settings saved.");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -150,7 +153,7 @@ function Me() {
   const emailReminderMutation = useMutation({
     mutationFn: useServerFn(updateEmailReminderSettings),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["today"] });
+      void refreshProgress(queryClient);
       toast.success("Email nudge settings saved.");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -159,7 +162,7 @@ function Me() {
   const targetMutation = useMutation({
     mutationFn: useServerFn(updateTargetSettings),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["today"] });
+      void refreshProgress(queryClient);
       void queryClient.invalidateQueries({ queryKey: ["team"] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -169,6 +172,7 @@ function Me() {
     mutationFn: useServerFn(leaveTeam),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["team"] });
+      void refreshProgress(queryClient);
       toast.success("You left the squad.");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -184,16 +188,21 @@ function Me() {
   const emailRemindersEnabled = settings?.emailRemindersEnabled ?? true;
   const emailPausedUntil = settings?.emailRemindersPausedUntil ?? null;
   const emailPauseActive = !!emailPausedUntil && emailPausedUntil > today;
-  const loggedToday = Object.values(
-    (settingsQuery.data?.repsBySlot ?? {}) as Record<string, number>,
-  ).reduce((sum, n) => sum + n, 0);
+  const loggedToday =
+    Object.values((settingsQuery.data?.repsBySlot ?? {}) as Record<string, number>).reduce(
+      (sum, n) => sum + n,
+      0,
+    ) +
+    (settingsQuery.data?.withdrawnToday ?? 0) -
+    (settingsQuery.data?.depositedToday ?? 0);
 
   const reminders = useReminders({
     enabled: remindersEnabled,
+    scheduleTimers: false,
     today,
     slotTimes,
     perSet: Math.ceil(dailyTarget / frequency),
-    remaining: Math.max(dailyTarget - loggedToday, 0),
+    remaining: settings?.isRecoveryDay ? 0 : Math.max(dailyTarget - Math.max(loggedToday, 0), 0),
   });
 
   const initials =
@@ -236,9 +245,7 @@ function Me() {
             )}
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-2xl font-bold">
-              {profile.displayName || "Your profile"}
-            </h1>
+            <h1 className="truncate text-2xl font-bold">{profile.displayName || "Your profile"}</h1>
             <p className="truncate text-xs text-card/60">{user.email}</p>
             {memberSince ? (
               <p className="mt-0.5 text-xs text-card/60">Member since {memberSince}</p>
@@ -248,6 +255,14 @@ function Me() {
       </header>
 
       <main className="mx-auto w-full max-w-md flex-1 px-5 pb-8">
+        <QueryNotice
+          failed={statsQuery.isError || settingsQuery.isError || teamQuery.isError}
+          retry={() => {
+            void statsQuery.refetch();
+            void settingsQuery.refetch();
+            void teamQuery.refetch();
+          }}
+        />
         <section
           className="-mt-5 grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card p-4 shadow-sm"
           aria-label="Lifetime stats"
@@ -259,15 +274,16 @@ function Me() {
           ].map((s) => (
             <div key={s.label} className="text-center">
               <s.icon className="mx-auto size-4 text-primary" aria-hidden="true" />
-              <p className="mt-1 text-xl font-extrabold tabular-nums text-foreground">
-                {s.value}
-              </p>
+              <p className="mt-1 text-xl font-extrabold tabular-nums text-foreground">{s.value}</p>
               <p className="text-[11px] font-semibold text-muted-foreground">{s.label}</p>
             </div>
           ))}
         </section>
 
-        <section className="mt-5 rounded-2xl border border-border bg-card p-4" aria-labelledby="photo-heading">
+        <section
+          className="mt-5 rounded-2xl border border-border bg-card p-4"
+          aria-labelledby="photo-heading"
+        >
           <h2 id="photo-heading" className="text-sm font-bold text-foreground">
             Profile photo
           </h2>
@@ -287,7 +303,10 @@ function Me() {
           </div>
         </section>
 
-        <section className="mt-4 rounded-2xl border border-border bg-card p-4" aria-labelledby="name-heading">
+        <section
+          className="mt-4 rounded-2xl border border-border bg-card p-4"
+          aria-labelledby="name-heading"
+        >
           <h2 id="name-heading" className="text-sm font-bold text-foreground">
             Display name
           </h2>
@@ -317,7 +336,10 @@ function Me() {
           </div>
         </section>
 
-        <section className="mt-4 rounded-2xl border border-border bg-card p-4" aria-labelledby="target-heading">
+        <section
+          className="mt-4 rounded-2xl border border-border bg-card p-4"
+          aria-labelledby="target-heading"
+        >
           <h2 id="target-heading" className="text-sm font-bold text-foreground">
             Daily target
           </h2>
@@ -335,7 +357,10 @@ function Me() {
             <>
               <p className="mt-1 text-sm font-semibold text-primary">
                 Coming from your squad target
-                {settingsQuery.data?.settings.squadName ? ` (${settingsQuery.data.settings.squadName})` : ""}.
+                {settingsQuery.data?.settings.squadName
+                  ? ` (${settingsQuery.data.settings.squadName})`
+                  : ""}
+                .
               </p>
               <Button
                 variant="outline"
@@ -358,7 +383,10 @@ function Me() {
           )}
         </section>
 
-        <section className="mt-4 rounded-2xl border border-border bg-card p-4" aria-labelledby="reminders-heading">
+        <section
+          className="mt-4 rounded-2xl border border-border bg-card p-4"
+          aria-labelledby="reminders-heading"
+        >
           <h2 id="reminders-heading" className="text-sm font-bold text-foreground">
             Reminders
           </h2>
@@ -408,7 +436,7 @@ function Me() {
                 </p>
               </div>
               <Switch
-                checked={emailRemindersEnabled}
+                checked={emailDomainConfigured && emailRemindersEnabled}
                 aria-label="Enable weekly email nudge"
                 disabled={!emailDomainConfigured}
                 onCheckedChange={(next) =>
@@ -416,7 +444,7 @@ function Me() {
                 }
               />
             </div>
-            {emailRemindersEnabled ? (
+            {emailDomainConfigured && emailRemindersEnabled ? (
               <div className="mt-3">
                 <p className="text-xs text-muted-foreground">
                   {emailPauseActive
@@ -460,13 +488,18 @@ function Me() {
                 </div>
               </div>
             ) : null}
-            <p className="mt-3 text-xs text-muted-foreground">
-              Every nudge also has a one-click unsubscribe link at the bottom.
-            </p>
+            {emailDomainConfigured ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Every nudge also has a one-click unsubscribe link at the bottom.
+              </p>
+            ) : null}
           </div>
         </section>
 
-        <section className="mt-4 rounded-2xl border border-border bg-card p-4" aria-labelledby="planner-heading">
+        <section
+          className="mt-4 rounded-2xl border border-border bg-card p-4"
+          aria-labelledby="planner-heading"
+        >
           <h2 id="planner-heading" className="text-sm font-bold text-foreground">
             Goal planner
           </h2>
@@ -499,8 +532,10 @@ function Me() {
           </Button>
         </section>
 
-
-        <section className="mt-4 rounded-2xl border border-border bg-card p-4" aria-labelledby="squad-heading">
+        <section
+          className="mt-4 rounded-2xl border border-border bg-card p-4"
+          aria-labelledby="squad-heading"
+        >
           <h2 id="squad-heading" className="text-sm font-bold text-foreground">
             Squad
           </h2>

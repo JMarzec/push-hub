@@ -20,14 +20,16 @@ import {
   setFollowSharedTarget,
   setSharedTarget,
 } from "@/lib/teams.functions";
+import { refreshProgress } from "@/lib/query-refresh";
+import { useToday } from "@/hooks/useToday";
 import { localToday } from "@/lib/local-date";
 
 export const teamQueryOptions = queryOptions({
   queryKey: ["team"],
   queryFn: () => getMyTeam({ data: { today: localToday() } }),
-  staleTime: 5_000,
+  staleTime: 30_000,
   refetchOnMount: "always",
-  refetchInterval: 30_000,
+  refetchInterval: 120_000,
 });
 
 export const Route = createFileRoute("/_authenticated/squad")({
@@ -48,13 +50,15 @@ export const Route = createFileRoute("/_authenticated/squad")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: ({ context }) => {
-    void context.queryClient.ensureQueryData(teamQueryOptions);
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(teamQueryOptions);
   },
   errorComponent: ({ error }) => (
     <main className="mx-auto max-w-md px-5 py-16 text-center">
       <h1 className="text-xl font-bold text-foreground">Couldn't load your squad</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {error instanceof Error ? error.message : String(error)}
+      </p>
     </main>
   ),
   notFoundComponent: () => (
@@ -71,22 +75,38 @@ function Squad() {
   const { user } = Route.useRouteContext();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { data } = useSuspenseQuery(teamQueryOptions);
+  const today = useToday();
+  const { data } = useSuspenseQuery({ ...teamQueryOptions, queryKey: ["team", today] });
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [code, setCode] = useState("");
   const [board, setBoard] = useState<Board>("today");
 
   const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ["team"] });
-    void queryClient.invalidateQueries({ queryKey: ["today"] });
+    void refreshProgress(queryClient);
   };
   const onError = (error: Error) => toast.error(error.message);
 
-  const createMutation = useMutation({ mutationFn: useServerFn(createTeam), onSuccess: invalidate, onError });
-  const joinMutation = useMutation({ mutationFn: useServerFn(joinTeam), onSuccess: invalidate, onError });
-  const renameMutation = useMutation({ mutationFn: useServerFn(renameTeam), onSuccess: invalidate, onError });
-  const leaveMutation = useMutation({ mutationFn: useServerFn(leaveTeam), onSuccess: invalidate, onError });
+  const createMutation = useMutation({
+    mutationFn: useServerFn(createTeam),
+    onSuccess: invalidate,
+    onError,
+  });
+  const joinMutation = useMutation({
+    mutationFn: useServerFn(joinTeam),
+    onSuccess: invalidate,
+    onError,
+  });
+  const renameMutation = useMutation({
+    mutationFn: useServerFn(renameTeam),
+    onSuccess: invalidate,
+    onError,
+  });
+  const leaveMutation = useMutation({
+    mutationFn: useServerFn(leaveTeam),
+    onSuccess: invalidate,
+    onError,
+  });
   const sharedMutation = useMutation({
     mutationFn: useServerFn(setSharedTarget),
     onSuccess: invalidate,
@@ -252,9 +272,7 @@ function Squad() {
                 sharedFrequency: sharedFrequencyValue,
               },
             });
-            toast.success(
-              sharedTargetValue ? "Squad target updated." : "Squad target removed.",
-            );
+            toast.success(sharedTargetValue ? "Squad target updated." : "Squad target removed.");
           }}
           onToggleFollow={async (follow) => {
             await followMutation.mutateAsync({ data: { teamId: team.id, follow } });
@@ -270,7 +288,6 @@ function Squad() {
               Leaderboard
             </h2>
             <div className="flex gap-1 rounded-full bg-secondary p-1">
-
               {(["today", "twoDays", "week", "all"] as Board[]).map((key) => (
                 <button
                   key={key}
@@ -361,7 +378,6 @@ function Squad() {
                         )}
                       </p>
 
-
                       <div
                         className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary"
                         role="progressbar"
@@ -370,7 +386,10 @@ function Squad() {
                         aria-valuemax={100}
                         aria-label={`${m.displayName} progress today`}
                       >
-                        <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{ width: `${pct}%` }}
+                        />
                       </div>
                     </div>
                     <span className="text-sm font-bold text-foreground tabular-nums">
@@ -384,7 +403,6 @@ function Squad() {
         </section>
 
         {members.length > 0 ? <SquadMonthChart members={members} /> : null}
-
 
         <Button
           variant="ghost"

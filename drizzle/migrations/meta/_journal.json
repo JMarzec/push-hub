@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792306842827,
+      "tag": "0000_protect_progress_and_preserve_daily_goals",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792306869762,
+      "tag": "0001_enable_owned_goal_snapshot_refresh",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792307129804,
+      "tag": "0002_aggregate_squad_history_and_atomic_bank_transfer",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792307528775,
+      "tag": "0003_finish_goal_history_and_squad_lifecycle",
+      "breakpoints": true
+    }
+  ]
+}

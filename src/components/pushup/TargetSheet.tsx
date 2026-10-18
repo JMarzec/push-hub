@@ -154,8 +154,8 @@ export function TargetSheet({
 
         <p className="mt-4 rounded-2xl bg-accent px-4 py-3 text-sm text-accent-foreground">
           That's about <span className="font-bold tabular-nums">{perSet}</span> push-ups per set,{" "}
-          <span className="font-bold tabular-nums">{freq}</span>{" "}
-          {freq === 1 ? "time" : "times"} a day.
+          <span className="font-bold tabular-nums">{freq}</span> {freq === 1 ? "time" : "times"} a
+          day.
         </p>
 
         <Button

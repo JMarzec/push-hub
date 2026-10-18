@@ -56,9 +56,7 @@ export const updateProfile = createServerFn({ method: "POST" })
  */
 export const setAvatar = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({ path: z.string().min(1).max(300) }).parse(input),
-  )
+  .inputValidator((input) => z.object({ path: z.string().min(1).max(300) }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     if (!data.path.startsWith(`${userId}/`)) {
@@ -90,10 +88,7 @@ export const removeAvatar = createServerFn({ method: "POST" })
     if (profile?.avatar_url) {
       await supabase.storage.from(AVATAR_BUCKET).remove([profile.avatar_url]);
     }
-    const { error } = await supabase
-      .from("profiles")
-      .update({ avatar_url: null })
-      .eq("id", userId);
+    const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

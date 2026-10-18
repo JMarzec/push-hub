@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+import { refreshProgress } from "@/lib/query-refresh";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -79,9 +81,12 @@ export function DayDetailsSheet({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftReps, setDraftReps] = useState(0);
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, error, refetch } = useQuery({
     queryKey: ["day-logs", date],
-    queryFn: () => fetchDay({ data: { date: date! } }),
+    queryFn: () => {
+      if (!date) throw new Error("Choose a day");
+      return fetchDay({ data: { date } });
+    },
     enabled: !!date,
   });
 
@@ -91,6 +96,7 @@ export function DayDetailsSheet({
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["day-logs", date] });
+    await refreshProgress(queryClient);
     onChanged();
   };
 
@@ -100,11 +106,13 @@ export function DayDetailsSheet({
       setEditingId(null);
       await refresh();
     },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => removeLog({ data: { id } }),
     onSuccess: refresh,
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const meta = STATUS_COPY[status];
@@ -166,132 +174,147 @@ export function DayDetailsSheet({
           <SheetDescription>{meta.note}</SheetDescription>
         </SheetHeader>
 
-        <div className="mt-4 space-y-4">
-          <div className="flex items-center gap-2">
-            <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${meta.className}`}>
-              {meta.label}
-            </span>
-            {inCurrentStreak ? (
-              <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-muted-foreground">
-                In current streak
-              </span>
-            ) : null}
+        {error ? (
+          <div role="alert" className="mt-4 text-destructive">
+            Could not load this day.{" "}
+            <Button variant="outline" onClick={() => void refetch()}>
+              Retry
+            </Button>
           </div>
-
-          <div className="rounded-2xl bg-secondary p-4">
-            <p className="text-lg font-bold text-foreground tabular-nums">
-              {total} / {target} reps
-            </p>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background">
-              <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+        ) : (
+          <div className="mt-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${meta.className}`}>
+                {meta.label}
+              </span>
+              {inCurrentStreak ? (
+                <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+                  In current streak
+                </span>
+              ) : null}
             </div>
-            {(deposited > 0 || withdrawn > 0) ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                {withdrawn > 0 ? `${withdrawn} from bank used` : ""}
-                {withdrawn > 0 && deposited > 0 ? " · " : ""}
-                {deposited > 0 ? `${deposited} banked for later` : ""}
+
+            {data?.historyBasis === "pretracking_fallback" ? (
+              <p className="text-xs text-muted-foreground">
+                The original goal was not saved. This day uses the settings recorded when goal
+                history was introduced.
               </p>
             ) : null}
+            <div className="rounded-2xl bg-secondary p-4">
+              <p className="text-lg font-bold text-foreground tabular-nums">
+                {total} / {target} reps
+              </p>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background">
+                <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+              </div>
+              {deposited > 0 || withdrawn > 0 ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {withdrawn > 0 ? `${withdrawn} from bank used` : ""}
+                  {withdrawn > 0 && deposited > 0 ? " · " : ""}
+                  {deposited > 0 ? `${deposited} banked for later` : ""}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="rounded-2xl border border-border p-4">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                Streak impact
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {streakLines.map((line) => (
+                  <li key={line} className="text-xs leading-relaxed text-foreground">
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {isPending ? (
+              <p className="text-xs text-muted-foreground">Loading sets…</p>
+            ) : data && data.logs.length > 0 ? (
+              <ul className="divide-y divide-border overflow-hidden rounded-2xl bg-secondary">
+                {data.logs.map((log) => (
+                  <li key={log.id} className="flex items-center gap-2 px-3 py-2.5">
+                    {editingId === log.id ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="size-8 rounded-full"
+                          aria-label="Decrease reps"
+                          onClick={() => setDraftReps((r) => Math.max(1, r - 5))}
+                        >
+                          <Minus className="size-4" />
+                        </Button>
+                        <span className="w-12 text-center text-sm font-bold text-foreground tabular-nums">
+                          {draftReps}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="size-8 rounded-full"
+                          aria-label="Increase reps"
+                          onClick={() => setDraftReps((r) => Math.min(500, r + 5))}
+                        >
+                          <Plus className="size-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="ml-auto rounded-full"
+                          disabled={editMutation.isPending}
+                          onClick={() => editMutation.mutate({ id: log.id, reps: draftReps })}
+                        >
+                          <Check className="mr-1 size-4" /> Save
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-foreground tabular-nums">
+                            {log.reps} reps
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {log.activityLabel && log.activityAmount
+                              ? `${log.activityAmount} ${log.activityUnit} ${log.activityLabel} · converted`
+                              : log.slot
+                                ? `Slot ${log.slot}`
+                                : "Unassigned set"}
+                          </p>
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="rounded-full text-xs"
+                          onClick={() => {
+                            setEditingId(log.id);
+                            setDraftReps(log.reps);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 rounded-full text-destructive"
+                          aria-label={`Delete ${log.reps} rep set`}
+                          disabled={deleteMutation.isPending}
+                          onClick={() => deleteMutation.mutate(log.id)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="rounded-2xl bg-secondary p-4 text-xs text-muted-foreground">
+                Nothing logged on this day.
+              </p>
+            )}
           </div>
-
-          <div className="rounded-2xl border border-border p-4">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Streak impact
-            </p>
-            <ul className="mt-2 space-y-1.5">
-              {streakLines.map((line) => (
-                <li key={line} className="text-xs leading-relaxed text-foreground">
-                  {line}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {isPending ? (
-            <p className="text-xs text-muted-foreground">Loading sets…</p>
-          ) : data && data.logs.length > 0 ? (
-            <ul className="divide-y divide-border overflow-hidden rounded-2xl bg-secondary">
-              {data.logs.map((log) => (
-                <li key={log.id} className="flex items-center gap-2 px-3 py-2.5">
-                  {editingId === log.id ? (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="size-8 rounded-full"
-                        aria-label="Decrease reps"
-                        onClick={() => setDraftReps((r) => Math.max(1, r - 5))}
-                      >
-                        <Minus className="size-4" />
-                      </Button>
-                      <span className="w-12 text-center text-sm font-bold text-foreground tabular-nums">
-                        {draftReps}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="size-8 rounded-full"
-                        aria-label="Increase reps"
-                        onClick={() => setDraftReps((r) => Math.min(500, r + 5))}
-                      >
-                        <Plus className="size-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="ml-auto rounded-full"
-                        disabled={editMutation.isPending}
-                        onClick={() => editMutation.mutate({ id: log.id, reps: draftReps })}
-                      >
-                        <Check className="mr-1 size-4" /> Save
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-foreground tabular-nums">
-                          {log.reps} reps
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {log.activityLabel && log.activityAmount
-                            ? `${log.activityAmount} ${log.activityUnit} ${log.activityLabel} · converted`
-                            : log.slot
-                              ? `Slot ${log.slot}`
-                              : "Unassigned set"}
-                        </p>
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="rounded-full text-xs"
-                        onClick={() => {
-                          setEditingId(log.id);
-                          setDraftReps(log.reps);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 rounded-full text-destructive"
-                        aria-label={`Delete ${log.reps} rep set`}
-                        disabled={deleteMutation.isPending}
-                        onClick={() => deleteMutation.mutate(log.id)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="rounded-2xl bg-secondary p-4 text-xs text-muted-foreground">
-              Nothing logged on this day.
-            </p>
-          )}
-        </div>
+        )}
       </SheetContent>
     </Sheet>
   );

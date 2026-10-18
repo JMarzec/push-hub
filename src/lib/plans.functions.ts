@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { localToday } from "@/lib/local-date";
+import { readPages } from "@/lib/paginate";
 import { applyDuePlans } from "@/lib/plans-apply";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
@@ -11,21 +13,25 @@ export const listPlans = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const applied = await applyDuePlans(supabase, userId, data.today);
+    const applied = await applyDuePlans(supabase, userId, localToday());
 
     const [plansRes, settingsRes] = await Promise.all([
-      supabase
-        .from("target_plans")
-        .select("id, effective_date, daily_target, frequency, note, applied_at")
-        .eq("user_id", userId)
-        .order("effective_date", { ascending: true }),
+      readPages((from, to) =>
+        supabase
+          .from("target_plans")
+          .select("id, effective_date, daily_target, frequency, note, applied_at")
+          .eq("user_id", userId)
+          .order("effective_date", { ascending: true })
+          .order("id")
+          .range(from, to),
+      ),
       supabase
         .from("user_settings")
         .select("daily_target, frequency")
         .eq("user_id", userId)
         .maybeSingle(),
     ]);
-    if (plansRes.error) throw new Error(plansRes.error.message);
+    if (settingsRes.error) throw new Error(settingsRes.error.message);
 
     return {
       justApplied: applied.applied,
@@ -33,7 +39,7 @@ export const listPlans = createServerFn({ method: "POST" })
         dailyTarget: settingsRes.data?.daily_target ?? 50,
         frequency: settingsRes.data?.frequency ?? 4,
       },
-      plans: (plansRes.data ?? []).map((p) => ({
+      plans: plansRes.map((p) => ({
         id: p.id,
         effectiveDate: p.effective_date,
         dailyTarget: p.daily_target,
@@ -59,7 +65,7 @@ export const savePlan = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    if (data.effectiveDate < data.today) {
+    if (data.effectiveDate < localToday()) {
       throw new Error("Pick today or a future date for a scheduled change.");
     }
 
@@ -81,7 +87,7 @@ export const savePlan = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     // A plan dated today should take effect immediately.
-    const applied = await applyDuePlans(supabase, userId, data.today);
+    const applied = await applyDuePlans(supabase, userId, localToday());
     return { id: row.id, appliedNow: applied.applied !== null };
   });
 

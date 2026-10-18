@@ -141,11 +141,7 @@ export type WellbeingEntry = {
 };
 
 /** Today first, then every earlier challenge day back to the start date. */
-export function buildFactHistory(
-  startDate: string,
-  today: string,
-  limit = 60,
-): WellbeingEntry[] {
+export function buildFactHistory(startDate: string, today: string, limit = 60): WellbeingEntry[] {
   const span = Math.max(dayIndex(startDate, today), 0);
   const entries: WellbeingEntry[] = [];
   const startMs = Date.parse(`${startDate}T00:00:00Z`);

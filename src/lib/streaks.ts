@@ -65,12 +65,17 @@ export function computeStreaks(
     timelineDays?: number;
     /** 0 = Sunday … 6 = Saturday. That weekday never counts as a miss. */
     restDayOfWeek?: number | null;
+    recoveryDates?: Iterable<string>;
+    startDate?: string;
   } = {},
 ): StreakResult {
-  const { maxLookbackDays = 730, timelineDays = 30, restDayOfWeek = null } = options;
+  const { maxLookbackDays = Infinity, timelineDays = 30, restDayOfWeek = null } = options;
+  const recoveries = options.recoveryDates ? new Set(options.recoveryDates) : null;
   const isRecovery = (ms: number) =>
-    restDayOfWeek !== null && new Date(ms).getUTCDay() === restDayOfWeek;
-  const hits = new Set(hitDates);
+    recoveries
+      ? recoveries.has(toKey(ms))
+      : restDayOfWeek !== null && new Date(ms).getUTCDay() === restDayOfWeek;
+  const hits = new Set([...hitDates].filter((d) => d <= today));
   const todayMs = toMs(today);
 
   const emptyTimeline = (): StreakDay[] =>
@@ -78,7 +83,7 @@ export function computeStreaks(
       const ms = todayMs - (timelineDays - 1 - i) * DAY_MS;
       return {
         date: toKey(ms),
-        status: (ms === todayMs ? "pending" : "none") as DayStatus,
+        status: (isRecovery(ms) ? "recovery" : ms === todayMs ? "pending" : "none") as DayStatus,
         inCurrentStreak: false,
       };
     });
@@ -95,7 +100,9 @@ export function computeStreaks(
   }
 
   const sorted = [...hits].sort();
-  const firstMs = toMs(sorted[0]!);
+  const firstDate = sorted[0];
+  if (!firstDate) throw new Error("Missing first streak date");
+  const firstMs = toMs(firstDate);
 
   let current = 0;
   let restDaysUsed = 0;
@@ -108,7 +115,10 @@ export function computeStreaks(
   const statuses = new Map<number, DayStatus>();
   const inCurrent = new Set<number>();
 
-  const startMs = Math.max(firstMs, todayMs - maxLookbackDays * DAY_MS);
+  const startMs = Math.max(
+    options.startDate ? toMs(options.startDate) : firstMs,
+    Number.isFinite(maxLookbackDays) ? todayMs - maxLookbackDays * DAY_MS : firstMs,
+  );
 
   for (let ms = todayMs; ms >= startMs; ms -= DAY_MS) {
     const hit = hits.has(toKey(ms));
@@ -138,10 +148,9 @@ export function computeStreaks(
       continue;
     }
 
-
     const previousMissedMs = restWindow[restWindow.length - 1];
     const consecutiveMiss = previousMissedMs === ms + DAY_MS;
-    while (restWindow.length > 0 && restWindow[0]! - ms >= REST_WINDOW_DAYS * DAY_MS) {
+    while (restWindow.length > 0 && (restWindow[0] ?? ms) - ms >= REST_WINDOW_DAYS * DAY_MS) {
       restWindow.shift();
     }
     const canForgive = !consecutiveMiss && restWindow.length < MAX_REST_DAYS_PER_WINDOW;
@@ -150,7 +159,7 @@ export function computeStreaks(
       restWindow.push(ms);
       statuses.set(ms, "rest");
       if (!currentDone) {
-        restDaysUsed += 1;
+        if (ms >= todayMs - (REST_WINDOW_DAYS - 1) * DAY_MS) restDaysUsed += 1;
         inCurrent.add(ms);
         if (current > 0 && ms === todayMs - DAY_MS) onGrace = true;
       }
@@ -172,6 +181,9 @@ export function computeStreaks(
       inCurrentStreak: inCurrent.has(ms),
     };
   });
+
+  onGrace =
+    current > 0 && statuses.get(todayMs - DAY_MS) === "rest" && inCurrent.has(todayMs - DAY_MS);
 
   return {
     current,

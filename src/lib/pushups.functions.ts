@@ -2,14 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { slotTimesFor } from "@/lib/pushup-schedule";
-import { applyDuePlans } from "@/lib/plans-apply";
-import {
-  computeStreaks,
-  isRecoveryDate,
-  MAX_REST_DAYS_PER_WINDOW,
-  REST_WINDOW_DAYS,
-} from "@/lib/streaks";
-
+import { progressContext } from "@/lib/progress-context";
+import { dailyReps, hitDatesFor } from "@/lib/daily-accounting";
+import { readPages } from "@/lib/paginate";
+import { computeStreaks, isRecoveryDate } from "@/lib/streaks";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
 
@@ -21,12 +17,14 @@ export const getToday = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    let { data: settings } = await supabase
+    const settingsResult = await supabase
       .from("user_settings")
       .select("*")
       .eq("user_id", userId)
       .maybeSingle();
 
+    if (settingsResult.error) throw new Error(settingsResult.error.message);
+    let settings = settingsResult.data;
     if (!settings) {
       const inserted = await supabase
         .from("user_settings")
@@ -41,71 +39,45 @@ export const getToday = createServerFn({ method: "POST" })
       settings = inserted.data;
     }
 
-    // Scheduled goal-plan changes take effect the first time the day is opened.
-    const planApplied = await applyDuePlans(supabase, userId, data.today);
-    if (planApplied.applied) {
-      const refreshed = await supabase
-        .from("user_settings")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (refreshed.data) settings = refreshed.data;
-    }
+    const effective = await progressContext(supabase, userId);
+    settings = {
+      ...effective.settings,
+      daily_target: effective.target,
+      frequency: effective.frequency,
+      slot_times:
+        effective.targetSource === "squad"
+          ? slotTimesFor(effective.frequency)
+          : effective.settings.slot_times,
+    };
+    const targetSource = effective.targetSource;
+    const squadName = effective.squadName;
+    const sinceDate = settings.start_date;
 
-
-
-    // Members who opted in follow their squad's shared target instead of their own.
-    let targetSource: "personal" | "squad" = "personal";
-    let squadName: string | null = null;
-    const { data: membership } = await supabase
-      .from("team_members")
-      .select("follow_shared_target, teams(name, shared_target, shared_frequency)")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    const squad = membership?.teams as unknown as
-      | { name: string; shared_target: number | null; shared_frequency: number | null }
-      | null
-      | undefined;
-    if (membership?.follow_shared_target && squad?.shared_target) {
-      targetSource = "squad";
-      squadName = squad.name;
-      const frequency = squad.shared_frequency ?? settings.frequency;
-      settings = {
-        ...settings,
-        daily_target: squad.shared_target,
-        frequency,
-        slot_times: slotTimesFor(frequency),
-      };
-    }
-
-    const since = new Date(`${data.today}T00:00:00Z`);
-    since.setUTCDate(since.getUTCDate() - 60);
-    const sinceDate = since.toISOString().slice(0, 10);
-
-    const [logsRes, bankRes] = await Promise.all([
-      supabase
-        .from("pushup_logs")
-        .select("id, reps, slot, log_date, logged_at, activity_label, activity_amount, activity_unit")
-        .eq("user_id", userId)
-        .gte("log_date", sinceDate)
-        .order("logged_at", { ascending: true }),
-      supabase
-        .from("bank_entries")
-        .select("id, reps, kind, entry_date")
-        .eq("user_id", userId),
+    const [logs, bankEntries] = await Promise.all([
+      readPages((from, to) =>
+        supabase
+          .from("pushup_logs")
+          .select("id,reps,slot,log_date,logged_at,activity_label,activity_amount,activity_unit")
+          .eq("user_id", userId)
+          .gte("log_date", sinceDate)
+          .lte("log_date", data.today)
+          .order("logged_at")
+          .order("id")
+          .range(from, to),
+      ),
+      readPages((from, to) =>
+        supabase
+          .from("bank_entries")
+          .select("id,reps,kind,entry_date")
+          .eq("user_id", userId)
+          .order("id")
+          .range(from, to),
+      ),
     ]);
-    if (logsRes.error) throw new Error(logsRes.error.message);
-    if (bankRes.error) throw new Error(bankRes.error.message);
-
-    const logs = logsRes.data ?? [];
-    const bankEntries = bankRes.data ?? [];
 
     const repsBySlot: Record<string, number> = {};
-    const repsByDate: Record<string, number> = {};
+    const repsByDate = dailyReps(logs, bankEntries);
     for (const log of logs) {
-      repsByDate[log.log_date] = (repsByDate[log.log_date] ?? 0) + log.reps;
       if (log.log_date === data.today) {
         const slot = log.slot ?? "unassigned";
         repsBySlot[slot] = (repsBySlot[slot] ?? 0) + log.reps;
@@ -117,41 +89,33 @@ export const getToday = createServerFn({ method: "POST" })
     let withdrawnToday = 0;
     // Withdrawals count towards the day they're used on, deposits are moved out
     // of it — same net rule the ring and the squad total apply.
-    const netBankByDate: Record<string, number> = {};
+
     for (const entry of bankEntries) {
       const signed = entry.kind === "deposit" ? entry.reps : -entry.reps;
       bank += signed;
-      netBankByDate[entry.entry_date] = (netBankByDate[entry.entry_date] ?? 0) - signed;
+
       if (entry.entry_date === data.today) {
         if (entry.kind === "deposit") depositedToday += entry.reps;
         else withdrawnToday += entry.reps;
       }
     }
-    for (const [date, net] of Object.entries(netBankByDate)) {
-      if (date < sinceDate) continue;
-      repsByDate[date] = Math.max((repsByDate[date] ?? 0) + net, 0);
-    }
-
-    // Streak: use the same gap-tolerant rules as the Trophies screen.
     const restDayOfWeek = settings.rest_day_of_week ?? null;
     const isRecoveryDay = isRecoveryDate(data.today, restDayOfWeek);
     const target = settings.daily_target;
-    const targetDates = Object.entries(repsByDate)
-      .filter(([_, reps]) => reps >= target)
-      .map(([date]) => date);
+    const targetDates = hitDatesFor(repsByDate, effective.goals, target, restDayOfWeek);
     const streaks = computeStreaks(targetDates, data.today, {
-      maxLookbackDays: 60,
       timelineDays: 30,
+      startDate: settings.start_date,
       restDayOfWeek,
+      recoveryDates: recoveryDates(effective.goals, data.today, restDayOfWeek),
     });
     const streak = streaks.current;
-
 
     const startMs = Date.parse(`${settings.start_date}T00:00:00Z`);
     const todayMs = Date.parse(`${data.today}T00:00:00Z`);
     const dayNumber = Math.max(Math.floor((todayMs - startMs) / 86_400_000) + 1, 1);
     const completedDays = Object.entries(repsByDate)
-      .filter(([date, reps]) => reps >= target && date !== data.today)
+      .filter(([date]) => targetDates.includes(date) && date !== data.today)
       .map(([date]) => Math.floor((Date.parse(`${date}T00:00:00Z`) - startMs) / 86_400_000) + 1)
       .filter((day) => day >= 1);
 
@@ -181,7 +145,7 @@ export const getToday = createServerFn({ method: "POST" })
       streak,
       dayNumber,
       completedDays,
-      planApplied: planApplied.applied !== null,
+      planApplied: effective.planApplied,
       todaysLogs: logs
         .filter((l) => l.log_date === data.today)
         .map((l) => ({
@@ -230,7 +194,6 @@ export const logReps = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { id: row.id };
   });
-
 
 export const deleteLog = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -289,37 +252,21 @@ export const moveBank = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-
-    const { data: entries, error: readError } = await supabase
-      .from("bank_entries")
-      .select("reps, kind")
-      .eq("user_id", userId);
-    if (readError) throw new Error(readError.message);
-
-    const balance = (entries ?? []).reduce(
-      (sum, e) => sum + (e.kind === "deposit" ? e.reps : -e.reps),
-      0,
-    );
-    if (data.kind === "withdrawal" && data.reps > balance) {
-      throw new Error(`Only ${balance} banked push-ups available.`);
-    }
-
-    const { data: inserted, error } = await supabase
-      .from("bank_entries")
-      .insert({
-        user_id: userId,
-        reps: data.reps,
-        kind: data.kind,
-        entry_date: data.today,
-      })
-      .select("id")
-      .single();
+    const { data: result, error } = await context.supabase.rpc("transfer_banked_reps", {
+      p_reps: data.reps,
+      p_kind: data.kind,
+      p_day: data.today,
+    });
     if (error) throw new Error(error.message);
-    return {
-      entryId: inserted.id,
-      balance: data.kind === "deposit" ? balance + data.reps : balance - data.reps,
-    };
+    if (
+      !result ||
+      typeof result !== "object" ||
+      Array.isArray(result) ||
+      typeof result["entryId"] !== "string" ||
+      typeof result["balance"] !== "number"
+    )
+      throw new Error("Invalid bank result");
+    return { entryId: result["entryId"], balance: result["balance"] };
   });
 
 // Reverts a single bank transfer (deposit or withdrawal) by deleting the entry
@@ -336,139 +283,6 @@ export const undoBankEntry = createServerFn({ method: "POST" })
       .eq("user_id", userId);
     if (error) throw new Error(error.message);
     return { ok: true };
-  });
-
-
-export const getStats = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ today: dateSchema }).parse(input))
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-
-    const [settingsRes, logsRes, bankRes, teamRes] = await Promise.all([
-      supabase
-        .from("user_settings")
-        .select("daily_target, rest_day_of_week")
-        .eq("user_id", userId)
-        .maybeSingle(),
-      supabase.from("pushup_logs").select("reps, log_date").eq("user_id", userId),
-      supabase.from("bank_entries").select("reps, kind, entry_date").eq("user_id", userId),
-      supabase.from("team_members").select("team_id").eq("user_id", userId).limit(1),
-    ]);
-    if (logsRes.error) throw new Error(logsRes.error.message);
-    if (bankRes.error) throw new Error(bankRes.error.message);
-
-    const target = settingsRes.data?.daily_target ?? 50;
-    const restDayOfWeek = settingsRes.data?.rest_day_of_week ?? null;
-    const repsByDate: Record<string, number> = {};
-    let totalReps = 0;
-    for (const log of logsRes.data ?? []) {
-      repsByDate[log.log_date] = (repsByDate[log.log_date] ?? 0) + log.reps;
-      totalReps += log.reps;
-    }
-
-    // Banked reps used on a day count towards that day (and deposits move out of it).
-    for (const entry of bankRes.data ?? []) {
-      const net = entry.kind === "deposit" ? -entry.reps : entry.reps;
-      repsByDate[entry.entry_date] = Math.max((repsByDate[entry.entry_date] ?? 0) + net, 0);
-    }
-
-    const dates = Object.keys(repsByDate).sort();
-    const bestDay = dates.reduce((max, d) => Math.max(max, repsByDate[d] ?? 0), 0);
-    const targetDates = dates.filter((d) => (repsByDate[d] ?? 0) >= target);
-    const targetDays = targetDates.length;
-
-    const streaks = computeStreaks(targetDates, data.today, { restDayOfWeek });
-
-
-    const bankedTotal = (bankRes.data ?? [])
-      .filter((e) => e.kind === "deposit")
-      .reduce((sum, e) => sum + e.reps, 0);
-
-    const weekAgo = new Date(`${data.today}T00:00:00Z`);
-    weekAgo.setUTCDate(weekAgo.getUTCDate() - 6);
-    const weekKey = weekAgo.toISOString().slice(0, 10);
-    const weekReps = dates
-      .filter((d) => d >= weekKey && d <= data.today)
-      .reduce((sum, d) => sum + (repsByDate[d] ?? 0), 0);
-
-    return {
-      dailyTarget: target,
-      totalReps,
-      bestDay,
-      daysLogged: dates.length,
-      targetDays,
-      currentStreak: streaks.current,
-      longestStreak: streaks.longest,
-      restDaysUsed: streaks.restDaysUsed,
-      restDaysLeft: streaks.restDaysLeft,
-      onGrace: streaks.onGrace,
-      restAllowance: MAX_REST_DAYS_PER_WINDOW,
-      restWindowDays: REST_WINDOW_DAYS,
-      streakTimeline: streaks.timeline.map((d) => ({
-        ...d,
-        reps: repsByDate[d.date] ?? 0,
-      })),
-
-
-      bankedTotal,
-      weekReps,
-      inTeam: (teamRes.data ?? []).length > 0,
-      recentDays: dates
-        .slice(-14)
-        .map((d) => ({ date: d, reps: repsByDate[d] ?? 0, hit: (repsByDate[d] ?? 0) >= target })),
-    };
-  });
-
-export const getDayLogs = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ date: dateSchema }).parse(input))
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    const [settingsRes, logsRes, bankRes] = await Promise.all([
-      supabase.from("user_settings").select("daily_target").eq("user_id", userId).maybeSingle(),
-      supabase
-        .from("pushup_logs")
-        .select("id, reps, slot, logged_at, activity_label, activity_amount, activity_unit")
-        .eq("user_id", userId)
-        .eq("log_date", data.date)
-        .order("logged_at", { ascending: true }),
-      supabase
-        .from("bank_entries")
-        .select("id, reps, kind, entry_date")
-        .eq("user_id", userId)
-        .eq("entry_date", data.date),
-    ]);
-    if (logsRes.error) throw new Error(logsRes.error.message);
-    if (bankRes.error) throw new Error(bankRes.error.message);
-    const logs = logsRes.data ?? [];
-    const bankEntries = bankRes.data ?? [];
-    const deposited = bankEntries
-      .filter((e) => e.kind === "deposit")
-      .reduce((sum, e) => sum + e.reps, 0);
-    const withdrawn = bankEntries
-      .filter((e) => e.kind === "withdrawal")
-      .reduce((sum, e) => sum + e.reps, 0);
-    return {
-      date: data.date,
-      dailyTarget: settingsRes.data?.daily_target ?? 50,
-      // Net of bank movements, so the sheet matches the ring and the streak rules.
-      totalReps: Math.max(
-        logs.reduce((sum, l) => sum + l.reps, 0) + withdrawn - deposited,
-        0,
-      ),
-      deposited,
-      withdrawn,
-      logs: logs.map((l) => ({
-          id: l.id,
-          reps: l.reps,
-          slot: l.slot,
-          loggedAt: l.logged_at,
-          activityLabel: l.activity_label,
-          activityAmount: l.activity_amount === null ? null : Number(l.activity_amount),
-          activityUnit: l.activity_unit,
-        })),
-    };
   });
 
 export const updateLog = createServerFn({ method: "POST" })
@@ -532,8 +346,10 @@ export const updateEmailReminderSettings = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const patch: { email_reminders_enabled?: boolean; email_reminders_paused_until?: string | null } =
-      {};
+    const patch: {
+      email_reminders_enabled?: boolean;
+      email_reminders_paused_until?: string | null;
+    } = {};
     if (data.enabled !== undefined) patch.email_reminders_enabled = data.enabled;
     if (data.pausedUntil !== undefined) patch.email_reminders_paused_until = data.pausedUntil;
     if (Object.keys(patch).length === 0) return { ok: true };
@@ -544,3 +360,17 @@ export const updateEmailReminderSettings = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+function recoveryDates(
+  goals: import("@/lib/daily-accounting").DailyGoal[],
+  today: string,
+  rest: number | null,
+) {
+  const dates = goals
+    .filter((g) => isRecoveryDate(g.goal_date, g.rest_day_of_week))
+    .map((g) => g.goal_date);
+  if (isRecoveryDate(today, rest)) dates.push(today);
+  return dates;
+}
+
+export { getStats, getDayLogs } from "./progress-reads.functions";

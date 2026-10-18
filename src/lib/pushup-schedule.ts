@@ -66,33 +66,39 @@ export function composeSets(
 
   let toRemove = Math.max(-netBank, 0);
   for (let i = sets.length - 1; i >= 0 && toRemove > 0; i -= 1) {
-    const take = Math.min(sets[i]!.reps, toRemove);
-    sets[i] = { ...sets[i]!, reps: sets[i]!.reps - take };
+    const set = sets[i];
+    if (!set) continue;
+    const take = Math.min(set.reps, toRemove);
+    sets[i] = { ...set, reps: set.reps - take };
     toRemove -= take;
   }
 
   let toAdd = Math.max(netBank, 0);
   for (let i = 0; i < sets.length && toAdd > 0; i += 1) {
-    const room = Math.max(sets[i]!.target - sets[i]!.reps, 0);
+    const set = sets[i];
+    if (!set) continue;
+    const room = Math.max(set.target - set.reps, 0);
     const give = Math.min(room, toAdd);
-    if (give > 0) sets[i] = { ...sets[i]!, reps: sets[i]!.reps + give };
+    if (give > 0) sets[i] = { ...set, reps: set.reps + give };
     toAdd -= give;
   }
   if (toAdd > 0 && sets.length > 0) {
     const last = sets.length - 1;
-    sets[last] = { ...sets[last]!, reps: sets[last]!.reps + toAdd };
+    const set = sets[last];
+    if (set) sets[last] = { ...set, reps: set.reps + toAdd };
   }
 
   // Overshooting one set counts towards the next ones, so a chip never reads 25/13.
   let spill = 0;
   for (let i = 0; i < sets.length; i += 1) {
-    const total = sets[i]!.reps + spill;
+    const set = sets[i];
+    if (!set) continue;
+    const total = set.reps + spill;
     const isLast = i === sets.length - 1;
-    const keep = isLast ? total : Math.min(total, sets[i]!.target);
+    const keep = isLast ? total : Math.min(total, set.target);
     spill = total - keep;
-    sets[i] = { ...sets[i]!, reps: keep };
+    sets[i] = { ...set, reps: keep };
   }
 
   return sets;
-
 }
