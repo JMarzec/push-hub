@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/calendar-middleware";
 import { slotTimesFor } from "@/lib/pushup-schedule";
 import { progressContext } from "@/lib/progress-context";
-import { dailyReps, hitDatesFor } from "@/lib/daily-accounting";
+import { personalRepsThrough, hitDatesFor } from "@/lib/daily-accounting";
 import { readPages } from "@/lib/paginate";
 import { computeStreaks, isRecoveryDate } from "@/lib/streaks";
 
@@ -77,7 +77,7 @@ export const getToday = createServerFn({ method: "POST" })
     ]);
 
     const repsBySlot: Record<string, number> = {};
-    const repsByDate = dailyReps(logs, bankEntries);
+    const repsByDate = personalRepsThrough(logs, bankEntries, data.today);
     for (const log of logs) {
       if (log.log_date === data.today) {
         const slot = log.slot ?? "unassigned";

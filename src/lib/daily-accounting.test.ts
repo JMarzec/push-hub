@@ -1,11 +1,19 @@
 import { describe, expect, test } from "bun:test";
-import { dailyReps, goalForDate, hitDatesFor } from "./daily-accounting";
+import { dailyReps, personalRepsThrough, goalForDate, hitDatesFor } from "./daily-accounting";
 import { computeStreaks } from "./streaks";
 import { addDays } from "./local-date";
 import { readPages } from "./paginate";
 import { composeSets } from "./pushup-schedule";
 
 describe("daily progress regressions", () => {
+  test("later bank credit does not appear in personal history after travelling west", () => {
+    const logs = [{ log_date: "2026-11-18", reps: 25 }];
+    const bank = [{ entry_date: "2026-11-18", kind: "withdrawal", reps: 50 }];
+    expect(personalRepsThrough(logs, bank, "2026-11-17")).toEqual({});
+    expect(personalRepsThrough(logs, bank, "2026-11-18")).toEqual({ "2026-11-18": 75 });
+    expect(logs[0]?.log_date).toBe("2026-11-18");
+    expect(bank[0]?.entry_date).toBe("2026-11-18");
+  });
   test("net banking does not depend on entry order", () => {
     const entries = [
       { entry_date: "2026-10-17", reps: 50, kind: "deposit" },

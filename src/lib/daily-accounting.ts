@@ -26,6 +26,14 @@ export function dailyReps(logs: RepLog[], bank: BankMovement[]): Record<string, 
   );
 }
 
+/** A westward timezone change must not count a later stored date as today's history. */
+export function personalRepsThrough(logs: RepLog[], bank: BankMovement[], today: string) {
+  return dailyReps(
+    logs.filter((log) => log.log_date <= today),
+    bank.filter((entry) => entry.entry_date <= today),
+  );
+}
+
 export function goalForDate(
   goals: DailyGoal[],
   date: string,

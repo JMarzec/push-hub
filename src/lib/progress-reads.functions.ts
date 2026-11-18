@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/calendar-middleware";
 import { progressContext } from "@/lib/progress-context";
-import { dailyReps, goalForDate, hitDatesFor } from "@/lib/daily-accounting";
+import { personalRepsThrough, goalForDate, hitDatesFor } from "@/lib/daily-accounting";
 import { readPages } from "@/lib/paginate";
 import {
   computeStreaks,
@@ -25,7 +25,6 @@ export const getStats = createServerFn({ method: "POST" })
           .from("pushup_logs")
           .select("reps,log_date")
           .eq("user_id", userId)
-          .lte("log_date", data.today)
           .order("id")
           .range(from, to),
       ),
@@ -42,7 +41,7 @@ export const getStats = createServerFn({ method: "POST" })
     if (teamRes.error) throw new Error(teamRes.error.message);
     const target = effective.target;
     const restDayOfWeek = effective.settings.rest_day_of_week ?? null;
-    const repsByDate = dailyReps(logs, bankEntries);
+    const repsByDate = personalRepsThrough(logs, bankEntries, data.today);
     const totalReps = logs.reduce((sum, log) => sum + log.reps, 0);
 
     const dates = Object.keys(repsByDate).sort();

@@ -15,6 +15,7 @@
 - Bank and log mutations are validated by serialized database triggers; application checks alone cannot prevent concurrent overdrafts.
 - Progress mutations use `refreshProgress` to refresh all dependent views together.
 - Personal calendars and reminders use the authenticated browser's validated timezone; server calculations use stored timezone, while squad comparisons retain separate UTC event buckets and goal snapshots. Never relabel historical personal records on timezone changes.
+- Personal date-range statistics exclude later stored dates after westward travel, but lifetime totals retain all logged reps; omitted dates on new records are assigned by personal-calendar database triggers so alternate write paths stay consistent.
 - Critical domain regressions run with `bun test src/lib/*.test.ts`; UI copy and styling are not test assertions.
 
 - Progress read endpoints live in `progress-reads.functions.ts`; mutation endpoints remain in `pushups.functions.ts` to keep accounting views separate from writes.

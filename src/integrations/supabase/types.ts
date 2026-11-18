@@ -69,7 +69,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          entry_date?: string
+          entry_date: string
           id?: string
           kind: string
           note?: string | null
@@ -173,7 +173,7 @@ export type Database = {
           activity_unit?: string | null
           created_at?: string
           id?: string
-          log_date?: string
+          log_date: string
           logged_at?: string
           reps: number
           slot?: string | null
@@ -369,7 +369,7 @@ export type Database = {
           reminders_enabled?: boolean
           rest_day_of_week?: number | null
           slot_times?: string[]
-          start_date?: string
+          start_date: string
           timezone?: string
           updated_at?: string
           user_id: string

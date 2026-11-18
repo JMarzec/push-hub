@@ -1,5 +1,7 @@
 # Approved repairs
 
+- [x] Sweep every personal-calendar screen and database path; fix westward-travel statistics, UTC squad rollover timers, and local defaults for new records. Verified eight pages at phone/desktop widths in both themes, all 30 day details, all 59 fact revisits, and 26 passing regressions.
+
 - [x] Restore local personal midnight, timezone-aware snapshots/plans/reminders, and separate UTC squad accounting; 25 regressions, signed-in logging/banking/undo, pending plans, and open-tab midnight checks passed.
 
 - [x] Add regression coverage and shared daily accounting (16 passing tests).

@@ -43,6 +43,13 @@
       "when": 1794977854881,
       "tag": "0005_separate_personal_and_squad_calendars",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794978402122,
+      "tag": "0006_default_new_progress_to_personal_calendar",
+      "breakpoints": true
     }
   ]
 }

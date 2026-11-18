@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { refreshProgress } from "@/lib/query-refresh";
-import { localToday, localTimezone, nextLocalMidnight } from "@/lib/local-date";
+import { localToday, localTimezone, nextLocalMidnight, utcToday } from "@/lib/local-date";
 
 export function useToday(calendar = localToday) {
   const queryClient = useQueryClient();
@@ -23,7 +23,11 @@ export function useToday(calendar = localToday) {
       }
       setToday(nextDay);
       window.clearTimeout(midnightTimer);
-      midnightTimer = window.setTimeout(refresh, nextLocalMidnight() + 25);
+      const delay =
+        calendar === utcToday
+          ? Date.parse(`${utcToday()}T00:00:00Z`) + 86_400_000 - Date.now()
+          : nextLocalMidnight();
+      midnightTimer = window.setTimeout(refresh, delay + 25);
     };
     refresh();
     const interval = window.setInterval(refresh, 15_000);
