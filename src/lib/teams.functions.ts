@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/lib/calendar-middleware";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -43,7 +43,7 @@ export interface MemberMonthDay {
 
 export const getMyTeam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  // All progress uses the UTC challenge calendar.
+  // Squad comparisons use the UTC challenge calendar.
   .inputValidator((input: unknown) =>
     z
       .object({

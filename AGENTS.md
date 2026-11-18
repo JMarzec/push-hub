@@ -14,7 +14,7 @@
 - Reconstructed pretracking goals must remain labeled as fallback; never present inferred old settings as verified history.
 - Bank and log mutations are validated by serialized database triggers; application checks alone cannot prevent concurrent overdrafts.
 - Progress mutations use `refreshProgress` to refresh all dependent views together.
-- Calendar tracking uses UTC dates across the app; reminder clock times remain local to the user's browser.
+- Personal calendars and reminders use the authenticated browser's validated timezone; server calculations use stored timezone, while squad comparisons retain separate UTC event buckets and goal snapshots. Never relabel historical personal records on timezone changes.
 - Critical domain regressions run with `bun test src/lib/*.test.ts`; UI copy and styling are not test assertions.
 
 - Progress read endpoints live in `progress-reads.functions.ts`; mutation endpoints remain in `pushups.functions.ts` to keep accounting views separate from writes.

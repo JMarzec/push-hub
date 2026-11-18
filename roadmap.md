@@ -1,5 +1,7 @@
 # Approved repairs
 
+- [x] Restore local personal midnight, timezone-aware snapshots/plans/reminders, and separate UTC squad accounting; 25 regressions, signed-in logging/banking/undo, pending plans, and open-tab midnight checks passed.
+
 - [x] Add regression coverage and shared daily accounting (16 passing tests).
 - [x] Protect banking and log edits atomically (concurrent withdrawals and unsupported deposits checked live).
 - [x] Preserve future dated goals and unify target/streak calculations; label reconstructed older history explicitly.

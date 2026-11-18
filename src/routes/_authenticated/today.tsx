@@ -1,5 +1,5 @@
 import { QueryNotice } from "@/components/pushup/QueryNotice";
-import { localToday } from "@/lib/local-date";
+import { localToday, localTimezone } from "@/lib/local-date";
 import { useToday } from "@/hooks/useToday";
 import { refreshProgress } from "@/lib/query-refresh";
 import { useState } from "react";
@@ -42,14 +42,6 @@ import {
   undoBankEntry,
   updateTargetSettings,
 } from "@/lib/pushups.functions";
-
-function localTimezone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  } catch {
-    return "UTC";
-  }
-}
 
 const todayQueryOptions = (date: string) =>
   queryOptions({

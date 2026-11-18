@@ -196,6 +196,38 @@ export type Database = {
         }
         Relationships: []
       }
+      squad_daily_goals: {
+        Row: {
+          daily_target: number
+          goal_date: string
+          history_basis: string
+          rest_day_of_week: number | null
+          user_id: string
+        }
+        Insert: {
+          daily_target: number
+          goal_date: string
+          history_basis?: string
+          rest_day_of_week?: number | null
+          user_id: string
+        }
+        Update: {
+          daily_target?: number
+          goal_date?: string
+          history_basis?: string
+          rest_day_of_week?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "squad_daily_goals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       target_plans: {
         Row: {
           applied_at: string | null
@@ -373,12 +405,14 @@ export type Database = {
         Args: { p_until: string; p_user: string }
         Returns: undefined
       }
+      capture_squad_goals: { Args: { p_user: string }; Returns: undefined }
       create_squad: {
         Args: { p_code: string; p_name: string }
         Returns: string
       }
       join_squad: { Args: { p_code: string }; Returns: string }
       leave_squad: { Args: { p_team: string }; Returns: undefined }
+      personal_calendar_day: { Args: { p_user: string }; Returns: string }
       refresh_daily_goals: { Args: never; Returns: undefined }
       refresh_squad_daily_goals: {
         Args: { p_team: string }
@@ -394,6 +428,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      sync_personal_calendar: { Args: { p_timezone?: string }; Returns: string }
       transfer_banked_reps: {
         Args: { p_day: string; p_kind: string; p_reps: number }
         Returns: Json

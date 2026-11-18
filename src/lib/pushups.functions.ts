@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/lib/calendar-middleware";
 import { slotTimesFor } from "@/lib/pushup-schedule";
 import { progressContext } from "@/lib/progress-context";
 import { dailyReps, hitDatesFor } from "@/lib/daily-accounting";
@@ -16,6 +16,7 @@ export const getToday = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    data = { ...data, today: context.calendarToday };
 
     const settingsResult = await supabase
       .from("user_settings")
@@ -31,7 +32,7 @@ export const getToday = createServerFn({ method: "POST" })
         .insert({
           user_id: userId,
           start_date: data.today,
-          timezone: data.timezone ?? "UTC",
+          timezone: context.calendarTimezone,
         })
         .select("*")
         .single();
@@ -183,7 +184,7 @@ export const logReps = createServerFn({ method: "POST" })
         user_id: context.userId,
         reps: data.reps,
         slot: data.slot ?? null,
-        log_date: data.today,
+        log_date: context.calendarToday,
         activity_key: data.activityKey ?? null,
         activity_label: data.activityLabel ?? null,
         activity_amount: data.activityAmount ?? null,
@@ -255,7 +256,7 @@ export const moveBank = createServerFn({ method: "POST" })
     const { data: result, error } = await context.supabase.rpc("transfer_banked_reps", {
       p_reps: data.reps,
       p_kind: data.kind,
-      p_day: data.today,
+      p_day: context.calendarToday,
     });
     if (error) throw new Error(error.message);
     if (

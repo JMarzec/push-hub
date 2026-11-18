@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/lib/calendar-middleware";
 import { progressContext } from "@/lib/progress-context";
 import { dailyReps, goalForDate, hitDatesFor } from "@/lib/daily-accounting";
 import { readPages } from "@/lib/paginate";
@@ -16,6 +16,7 @@ export const getStats = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ today: dateSchema }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    data = { ...data, today: context.calendarToday };
 
     const effective = await progressContext(supabase, userId);
     const [logs, bankEntries, teamRes] = await Promise.all([

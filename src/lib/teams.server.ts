@@ -1,6 +1,7 @@
 import { goalForDate, hitDatesFor } from "@/lib/daily-accounting";
 import { readPages } from "@/lib/paginate";
 import { computeStreaks, isRecoveryDate } from "@/lib/streaks";
+import { localToday } from "@/lib/local-date";
 import type { TeamMemberStat } from "./teams.functions";
 
 /**
@@ -67,7 +68,7 @@ export async function fetchTeamStats(
     supabaseAdmin.from("profiles").select("id, display_name, avatar_url").in("id", memberIds),
     supabaseAdmin
       .from("user_settings")
-      .select("user_id,daily_target,rest_day_of_week,start_date")
+      .select("user_id,daily_target,rest_day_of_week,start_date,timezone")
       .in("user_id", memberIds),
     readPages((from, to) =>
       supabaseAdmin
@@ -78,7 +79,7 @@ export async function fetchTeamStats(
     ),
     readPages((from, to) =>
       supabaseAdmin
-        .from("daily_goals")
+        .from("squad_daily_goals")
         .select("user_id,goal_date,daily_target,rest_day_of_week")
         .in("user_id", memberIds)
         .lt("goal_date", today)
@@ -91,7 +92,7 @@ export async function fetchTeamStats(
         .from("target_plans")
         .select("user_id,effective_date,daily_target,applied_at")
         .in("user_id", memberIds)
-        .lte("effective_date", today)
+        .lte("effective_date", new Date(todayMs + 86_400_000).toISOString().slice(0, 10))
         .order("effective_date")
         .order("id")
         .range(from, to),
@@ -152,7 +153,16 @@ export async function fetchTeamStats(
       const bucket = totals.get(member.user_id) ?? { today: 0, twoDays: 0, week: 0, all: 0 };
       const followsShared = Boolean(member.follow_shared_target) && sharedTarget !== null;
       const pendingPlan = plans
-        .filter((p) => p.user_id === member.user_id && p.applied_at === null)
+        .filter(
+          (p) =>
+            p.user_id === member.user_id &&
+            p.applied_at === null &&
+            p.effective_date <=
+              localToday(
+                now,
+                settings.data?.find((s) => s.user_id === member.user_id)?.timezone ?? "UTC",
+              ),
+        )
         .at(-1);
       const baseTarget = followsShared
         ? (sharedTarget ?? 50)

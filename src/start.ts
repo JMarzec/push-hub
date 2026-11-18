@@ -2,6 +2,11 @@ import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/r
 
 import { renderErrorPage } from "./lib/error-page";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
+import { localTimezone } from "@/lib/local-date";
+
+const attachPersonalCalendar = createMiddleware({ type: "function" }).client(async ({ next }) =>
+  next({ headers: { "x-personal-timezone": localTimezone() } }),
+);
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
@@ -26,6 +31,6 @@ const csrfMiddleware = createCsrfMiddleware({
 });
 
 export const startInstance = createStart(() => ({
-  functionMiddleware: [attachSupabaseAuth],
+  functionMiddleware: [attachSupabaseAuth, attachPersonalCalendar],
   requestMiddleware: [errorMiddleware, csrfMiddleware],
 }));

@@ -5,7 +5,14 @@ import { applyDuePlans } from "@/lib/plans-apply";
 import { localToday } from "@/lib/local-date";
 
 export async function progressContext(supabase: SupabaseClient<Database>, userId: string) {
-  const applied = await applyDuePlans(supabase, userId, localToday());
+  const calendar = await supabase
+    .from("user_settings")
+    .select("timezone")
+    .eq("user_id", userId)
+    .single();
+  if (calendar.error) throw new Error(calendar.error.message);
+  const today = localToday(new Date(), calendar.data.timezone);
+  const applied = await applyDuePlans(supabase, userId, today);
   const snapshot = await supabase.rpc("refresh_daily_goals");
   if (snapshot.error) throw new Error(snapshot.error.message);
   const [settings, membership, goals] = await Promise.all([
@@ -23,7 +30,7 @@ export async function progressContext(supabase: SupabaseClient<Database>, userId
         .from("daily_goals")
         .select("goal_date,daily_target,rest_day_of_week,history_basis")
         .eq("user_id", userId)
-        .lt("goal_date", localToday())
+        .lt("goal_date", today)
         .order("goal_date")
         .range(from, to),
     ),

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { localToday, localSlotDelay } from "@/lib/local-date";
 
 /**
  * Browser-local push-up reminders.
@@ -42,11 +43,6 @@ function markFired(key: string) {
   } catch {
     /* storage unavailable — reminders simply may repeat */
   }
-}
-
-function minutesOfDay(time: string): number {
-  const [h, m] = time.split(":").map((n) => Number.parseInt(n, 10));
-  return (h ?? 0) * 60 + (m ?? 0);
 }
 
 interface UseRemindersArgs {
@@ -102,11 +98,10 @@ export function useReminders({
 
   useEffect(() => {
     const now = new Date();
-    const nowMinutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
     const fired = typeof window === "undefined" ? {} : readFired();
 
     const diagnostics: SlotDiagnostic[] = slotTimes.map((time) => {
-      const minutesAway = minutesOfDay(time) - nowMinutes;
+      const minutesAway = localSlotDelay(time, now) / 60_000;
       const status: SlotDiagnostic["status"] = fired[`${today}@${time}`]
         ? "fired"
         : minutesAway < 0
@@ -126,7 +121,13 @@ export function useReminders({
       const key = `${today}@${slot.time}`;
       const timer = window.setTimeout(
         () => {
-          if (readFired()[key] || remaining <= 0 || Notification.permission !== "granted") return;
+          if (
+            localToday() !== today ||
+            readFired()[key] ||
+            remaining <= 0 ||
+            Notification.permission !== "granted"
+          )
+            return;
           markFired(key);
           new Notification("Push-up set time", {
             body: `Set ${index + 1} of ${slotTimes.length}: ${perSet} push-ups. ${remaining} left today.`,

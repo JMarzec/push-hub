@@ -36,6 +36,13 @@
       "when": 1792308172346,
       "tag": "0004_label_reconstructed_goal_history",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794977854881,
+      "tag": "0005_separate_personal_and_squad_calendars",
+      "breakpoints": true
     }
   ]
 }

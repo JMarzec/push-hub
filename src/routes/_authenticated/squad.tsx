@@ -22,11 +22,11 @@ import {
 } from "@/lib/teams.functions";
 import { refreshProgress } from "@/lib/query-refresh";
 import { useToday } from "@/hooks/useToday";
-import { localToday } from "@/lib/local-date";
+import { utcToday } from "@/lib/local-date";
 
 export const teamQueryOptions = queryOptions({
   queryKey: ["team"],
-  queryFn: () => getMyTeam({ data: { today: localToday() } }),
+  queryFn: () => getMyTeam({ data: { today: utcToday() } }),
   staleTime: 30_000,
   refetchOnMount: "always",
   refetchInterval: 120_000,
@@ -75,7 +75,7 @@ function Squad() {
   const { user } = Route.useRouteContext();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const today = useToday();
+  const today = useToday(utcToday);
   const { data } = useSuspenseQuery({ ...teamQueryOptions, queryKey: ["team", today] });
 
   const [inviteOpen, setInviteOpen] = useState(false);

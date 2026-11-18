@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { localToday } from "@/lib/local-date";
+import { requireSupabaseAuth } from "@/lib/calendar-middleware";
 import { readPages } from "@/lib/paginate";
 import { applyDuePlans } from "@/lib/plans-apply";
 
@@ -13,7 +12,7 @@ export const listPlans = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const applied = await applyDuePlans(supabase, userId, localToday());
+    const applied = await applyDuePlans(supabase, userId, context.calendarToday);
 
     const [plansRes, settingsRes] = await Promise.all([
       readPages((from, to) =>
@@ -65,7 +64,7 @@ export const savePlan = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    if (data.effectiveDate < localToday()) {
+    if (data.effectiveDate < context.calendarToday) {
       throw new Error("Pick today or a future date for a scheduled change.");
     }
 
@@ -87,7 +86,7 @@ export const savePlan = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     // A plan dated today should take effect immediately.
-    const applied = await applyDuePlans(supabase, userId, localToday());
+    const applied = await applyDuePlans(supabase, userId, context.calendarToday);
     return { id: row.id, appliedNow: applied.applied !== null };
   });
 
